@@ -12,9 +12,22 @@ served from the same domain, with the API under `/api`. PHP 8.3.
 
 ---
 
-## 0. Build the frontend (locally, before uploading)
+## 0. Build & package (locally, before uploading)
 
-The compiled SPA must be built and uploaded as part of `backend/public/`.
+The repo ships `deploy.sh`, which builds the SPA and produces an upload-ready
+zip in `dist-deploy/`. It does **not** touch your server.
+
+```bash
+./deploy.sh                 # Layout A (recommended): single folder, point doc root at public/
+./deploy.sh --layout b      # Layout B: split app/ (outside root) + docroot/ (public contents)
+```
+
+The archive excludes `vendor/`, `node_modules/`, `.git/`, `.env`, and tests
+(you install `vendor/` on the server). For Layout B the script also rewrites
+`index.php`'s require paths to point at `../apps/selectpic` — change `APP_REL`
+in `deploy.sh` if you place the app elsewhere.
+
+Prefer to do it by hand? Just build the SPA and upload `backend/`:
 
 ```bash
 cd frontend

@@ -89,8 +89,16 @@ cd frontend && npm run build     # outputs into ../backend/public (uses .env.pro
 ```
 
 Laravel serves `public/index.html` for all non-`/api` routes (SPA fallback in
-`routes/web.php`). Full cPanel instructions — doc root, database, `.env`,
-Composer, caching, permissions, and Google Drive credentials — are in
+`routes/web.php`). Or run the packaging helper, which builds the SPA and
+produces an upload-ready zip:
+
+```bash
+./deploy.sh                 # Layout A (point doc root at public/)
+./deploy.sh --layout b      # Layout B (fixed doc root)
+```
+
+Full cPanel instructions — doc root, database, `.env`, Composer, caching,
+permissions, and Google Drive credentials — are in
 [`DEPLOYMENT.md`](./DEPLOYMENT.md). The production env template is
 [`backend/.env.production.example`](./backend/.env.production.example).
 
