@@ -1,0 +1,375 @@
+:root {
+  --bride: #e4557f;
+  --bride-soft: #fde7ee;
+  --bride-dark: #b83c62;
+  --groom: #3b74d6;
+  --groom-soft: #e3edfb;
+  --groom-dark: #2a56a3;
+  --ink: #1f2430;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --bg: #f7f8fb;
+  --card: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+/* Header -------------------------------------------------------------------*/
+.app__header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.app__header h1 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.app__title-accent {
+  color: var(--bride);
+}
+
+.app__subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.app__empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 48px 0;
+}
+
+/* Buttons ------------------------------------------------------------------*/
+.btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+.btn--bride {
+  border-color: var(--bride);
+  color: var(--bride-dark);
+}
+
+.btn--bride:hover:not(:disabled) {
+  background: var(--bride-soft);
+}
+
+.btn--bride.is-active {
+  background: var(--bride);
+  color: #fff;
+}
+
+.btn--groom {
+  border-color: var(--groom);
+  color: var(--groom-dark);
+}
+
+.btn--groom:hover:not(:disabled) {
+  background: var(--groom-soft);
+}
+
+.btn--groom.is-active {
+  background: var(--groom);
+  color: #fff;
+}
+
+/* Project bar --------------------------------------------------------------*/
+.project-bar {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.project-bar__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.project-bar__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  flex: 1;
+  min-width: 220px;
+}
+
+.project-bar__picker select,
+.project-form input,
+.drive-toolbar input {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.project-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
+/* Drive toolbar ------------------------------------------------------------*/
+.drive-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.drive-toolbar input {
+  flex: 1;
+}
+
+/* Alerts -------------------------------------------------------------------*/
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.alert--error {
+  background: #fde8e8;
+  border: 1px solid #f5b5b5;
+  color: #9b1c1c;
+}
+
+/* Selection summary --------------------------------------------------------*/
+.selection-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.panel--bride {
+  border-top: 4px solid var(--bride);
+}
+
+.panel--groom {
+  border-top: 4px solid var(--groom);
+}
+
+.panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.panel__header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panel__count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.panel--bride .panel__count {
+  background: var(--bride);
+}
+
+.panel--groom .panel__count {
+  background: var(--groom);
+}
+
+.panel__empty {
+  margin: 0;
+  padding: 0 16px 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.panel__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.panel__item img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.panel__item-placeholder {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef0f3;
+  border-radius: 6px;
+}
+
+.panel__item-name {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Gallery ------------------------------------------------------------------*/
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.gallery__hint {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 0;
+}
+
+.image-card {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-card__media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #eef0f3;
+}
+
+.image-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-card__badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.badge--bride {
+  background: var(--bride);
+}
+
+.badge--groom {
+  background: var(--groom);
+}
+
+.image-card__name {
+  padding: 10px 12px 4px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-card__actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px 12px;
+}
+
+.image-card__actions .btn {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .selection-summary {
+    grid-template-columns: 1fr;
+  }
+}
