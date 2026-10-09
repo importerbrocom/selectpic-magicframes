@@ -28,7 +28,7 @@ export function DriveToolbar({ project, onFetch, loading }: DriveToolbarProps) {
       }}
     >
       <input
-        placeholder="Google Drive folder ID"
+        placeholder="Google Drive folder ID or share link"
         value={folderId}
         onChange={(e) => setFolderId(e.target.value)}
       />
