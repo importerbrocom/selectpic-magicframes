@@ -97,9 +97,10 @@ produces an upload-ready zip:
 ./deploy.sh --layout b      # Layout B (fixed doc root)
 ```
 
-Full cPanel instructions — doc root, database, `.env`, Composer, caching,
-permissions, and Google Drive credentials — are in
-[`DEPLOYMENT.md`](./DEPLOYMENT.md). The production env template is
+Full cPanel instructions — build locally, upload, then run the server setup —
+are in [`DEPLOYMENT.md`](./DEPLOYMENT.md). On the server you can run
+[`server-setup.sh`](./server-setup.sh) (from `backend/`) to install deps,
+prepare `.env`, migrate, and cache in one go. The production env template is
 [`backend/.env.production.example`](./backend/.env.production.example).
 
 ## Notes
