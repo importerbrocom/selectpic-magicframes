@@ -2,6 +2,11 @@
 /node_modules
 /public/build
 /public/hot
+# Compiled SPA (built from ../frontend at deploy time; see DEPLOYMENT.md)
+/public/index.html
+/public/app
+/public/favicon.svg
+/public/icons.svg
 /public/storage
 /storage/*.key
 /storage/pail

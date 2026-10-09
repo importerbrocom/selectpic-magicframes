@@ -79,6 +79,21 @@ cp .env.example .env         # sets VITE_API_BASE_URL=http://localhost:8000
 npm run dev                  # http://localhost:5173
 ```
 
+## Production (single domain)
+
+For deployment the React app is built directly into Laravel's `public/` and
+served from the same origin, with the API under `/api` (no CORS needed):
+
+```bash
+cd frontend && npm run build     # outputs into ../backend/public (uses .env.production)
+```
+
+Laravel serves `public/index.html` for all non-`/api` routes (SPA fallback in
+`routes/web.php`). Full cPanel instructions — doc root, database, `.env`,
+Composer, caching, permissions, and Google Drive credentials — are in
+[`DEPLOYMENT.md`](./DEPLOYMENT.md). The production env template is
+[`backend/.env.production.example`](./backend/.env.production.example).
+
 ## Notes
 
 - The Drive endpoint returns `502` with a clear message when credentials are missing,

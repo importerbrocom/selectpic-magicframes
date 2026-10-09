@@ -8,9 +8,11 @@ import type {
   Project,
 } from './types';
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
-  'http://localhost:8000';
+// When VITE_API_BASE_URL is set (e.g. local dev against a separate Laravel
+// server, or a split-domain deployment) requests go to `${base}/api`.
+// When it is empty/unset (the single-domain production build served from
+// Laravel's public/), requests go to the same origin at `/api`.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}/api${path}`, {
