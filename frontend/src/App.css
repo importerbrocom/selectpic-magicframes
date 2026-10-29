@@ -158,7 +158,7 @@ button:disabled {
 .brandUrl {
   letter-spacing: 5px;
   font-size: 12px;
-  margin-top: 40px;
+  margin-top: 18px;
 }
 .loginFormWrap {
   display: flex;
@@ -1652,7 +1652,7 @@ a.social {
 
 /* Login split-screen: transparent logo centered on the black panel */
 .loginLogo {
-  width: min(42%, 210px);
+  width: min(32%, 150px);
   height: auto;
   margin: 0 auto;
 }
@@ -1681,9 +1681,9 @@ a.social {
 
 /* Client-page logo images */
 .gateLogo {
-  width: min(42%, 180px);
+  width: min(34%, 140px);
   height: auto;
-  margin: 0 auto 55px;
+  margin: 0 auto 24px;
 }
 a.clientBrand {
   text-decoration: none;
