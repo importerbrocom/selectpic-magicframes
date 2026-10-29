@@ -16,7 +16,12 @@ export interface Album {
   name: string;
   subtitle: string;
   password: string;
-  events: string[];
+  /** Parent Google Drive folder ID (photos live in its sub-folders). */
+  driveFolderId: string;
+  /** The original Drive link the admin pasted (for display/editing). */
+  driveLink: string;
+  /** Legacy demo folder names; only used by the built-in seed albums. */
+  events?: string[];
   photos: number;
   cover: string;
   status: string;

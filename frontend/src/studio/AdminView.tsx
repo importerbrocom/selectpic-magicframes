@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
 import { downloadAlbumCSV, selectionCounts } from './helpers';
+import { parseFolderId } from './drive';
 import { photos } from './data';
 import type { Album, AdminTab, SelectionType } from './types';
 
@@ -41,9 +42,7 @@ export function AdminView({
   const [newName, setNewName] = useState('');
   const [newSubtitle, setNewSubtitle] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newEvents, setNewEvents] = useState(
-    'Haldi, Engagement, Wedding, Reception',
-  );
+  const [newDriveLink, setNewDriveLink] = useState('');
   const [newCover, setNewCover] = useState('');
 
   const totalPhotos = useMemo(
@@ -69,16 +68,21 @@ export function AdminView({
   function handleCreate(e: FormEvent) {
     e.preventDefault();
     const name = newName.trim();
-    const events = newEvents
-      .split(',')
-      .map((x) => x.trim())
-      .filter(Boolean);
+    const driveLink = newDriveLink.trim();
+    const driveFolderId = parseFolderId(driveLink);
+
+    if (driveLink && !driveFolderId) {
+      showToast('That does not look like a valid Google Drive folder link.');
+      return;
+    }
+
     onCreateAlbum({
       name,
       subtitle: newSubtitle.trim() || 'A Story in Every Frame',
       password: newPassword.trim(),
-      events: events.length ? events : ['Wedding'],
-      photos: photos.length,
+      driveLink,
+      driveFolderId,
+      photos: driveFolderId ? 0 : photos.length,
       cover: newCover.trim() || photos[0].url,
       status: 'In progress',
       views: 0,
@@ -89,7 +93,7 @@ export function AdminView({
     setNewSubtitle('');
     setNewPassword('');
     setNewCover('');
-    setNewEvents('Haldi, Engagement, Wedding, Reception');
+    setNewDriveLink('');
     setTab('albums');
     showToast('Private album created. Unique link and password are ready.');
   }
@@ -187,8 +191,8 @@ export function AdminView({
                   <h3>{a.name}</h3>
                   <p>{a.subtitle}</p>
                   <div className="albumMeta">
-                    {a.photos.toLocaleString()} photos · {a.events.length} events ·{' '}
-                    {a.status}
+                    {a.photos.toLocaleString()} photos ·{' '}
+                    {a.driveFolderId ? 'Drive' : 'Demo'} · {a.status}
                   </div>
                   <div className="cardActions">
                     <button
@@ -240,7 +244,7 @@ export function AdminView({
                 <tr>
                   <th>CLIENT / ALBUM</th>
                   <th>PHOTOS</th>
-                  <th>EVENTS</th>
+                  <th>SOURCE</th>
                   <th>BRIDE</th>
                   <th>GROOM</th>
                   <th>BOTH</th>
@@ -265,8 +269,8 @@ export function AdminView({
                           <br />
                           <span className="muted">{a.subtitle}</span>
                         </td>
-                        <td>{a.photos.toLocaleString()}</td>
-                        <td>{a.events.length}</td>
+                        <td>{a.photos ? a.photos.toLocaleString() : '—'}</td>
+                        <td>{a.driveFolderId ? 'Drive' : 'Demo'}</td>
                         <td>{c.bride}</td>
                         <td>{c.groom}</td>
                         <td>{c.both}</td>
@@ -300,12 +304,12 @@ export function AdminView({
 
         {/* Create */}
         <div className={'adminContent' + (tab === 'create' ? ' active' : '')}>
-          <div className="panel" style={{ padding: 25, maxWidth: 750 }}>
+          <div className="panel formCard" style={{ maxWidth: 760 }}>
             <h2 className="sectionTitle">Create a client album</h2>
             <p className="muted">
               Create a private client portal with its own password and unique link.
             </p>
-            <form onSubmit={handleCreate}>
+            <form className="createForm" onSubmit={handleCreate}>
               <div className="field">
                 <label>Client / Couple name *</label>
                 <input
@@ -333,13 +337,24 @@ export function AdminView({
                   minLength={4}
                 />
               </div>
-              <div className="field">
-                <label>Events / folders</label>
-                <input
-                  value={newEvents}
-                  onChange={(e) => setNewEvents(e.target.value)}
-                />
+
+              <div className="formSection">
+                <div className="formSectionLabel">PHOTO GALLERY</div>
+                <div className="field">
+                  <label>Google Drive Folder Link (photos)</label>
+                  <input
+                    placeholder="https://drive.google.com/drive/folders/…"
+                    value={newDriveLink}
+                    onChange={(e) => setNewDriveLink(e.target.value)}
+                  />
+                  <span className="muted tiny">
+                    Paste the parent Drive folder. Each sub-folder becomes an
+                    event tab (Haldi, Engagement, Wedding…). The folder must be
+                    shared as “Anyone with the link”.
+                  </span>
+                </div>
               </div>
+
               <div className="field">
                 <label>Cover image URL (optional)</label>
                 <input
@@ -518,6 +533,13 @@ function ManageModal({
         <div className="field">
           <label>Client password</label>
           <input readOnly value={album.password} />
+        </div>
+        <div className="field">
+          <label>Google Drive folder (photos)</label>
+          <input
+            readOnly
+            value={album.driveLink || '— using bundled demo photos —'}
+          />
         </div>
         <div className="field">
           <label>Album status</label>

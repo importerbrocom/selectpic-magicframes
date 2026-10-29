@@ -89,7 +89,9 @@ export const photos: Photo[] = [
   },
 ];
 
-export const initialAlbums: Album[] = [
+// Raw seed albums (demo data). Drive fields are filled in below so the
+// built-in albums fall back to the bundled demo photos.
+const seedAlbums: Omit<Album, 'driveFolderId' | 'driveLink'>[] = [
   {
     id: 1,
     name: 'Job Maya',
@@ -161,3 +163,9 @@ export const initialAlbums: Album[] = [
     selections: {},
   },
 ];
+
+export const initialAlbums: Album[] = seedAlbums.map((a) => ({
+  ...a,
+  driveFolderId: '',
+  driveLink: '',
+}));

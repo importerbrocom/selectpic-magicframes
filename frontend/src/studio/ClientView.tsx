@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { BrandMark } from './BrandMark';
-import { photos } from './data';
 import { selectionCounts } from './helpers';
+import { useDriveGallery } from './useDriveGallery';
+import type { DrivePhoto } from './drive';
 import type { Album, PhotoFilter, SelectionType } from './types';
 
 interface ClientViewProps {
@@ -31,28 +32,28 @@ export function ClientView({
   onExit,
   showToast,
 }: ClientViewProps) {
-  const [folder, setFolder] = useState(album.events[0] ?? 'Wedding');
+  const gallery = useDriveGallery(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
   const [zoomId, setZoomId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  // Keep the active folder valid for this album.
-  const activeFolder = album.events.includes(folder)
-    ? folder
-    : (album.events[0] ?? 'Wedding');
-
   const counts = selectionCounts(album);
   const total = counts.bride + counts.groom + counts.both;
 
+  const activeFolderName =
+    gallery.folders.find((f) => f.id === gallery.activeFolderId)?.name ?? '';
+
   const visiblePhotos = useMemo(() => {
-    let list = photos.filter((p) => p.folder === activeFolder);
+    let list = gallery.photos;
     if (filter === 'selected') list = list.filter((p) => album.selections[p.id]);
     if (filter === 'unselected')
       list = list.filter((p) => !album.selections[p.id]);
     return list;
-  }, [activeFolder, filter, album.selections]);
+  }, [gallery.photos, filter, album.selections]);
 
-  const zoomPhoto = zoomId ? photos.find((p) => p.id === zoomId) ?? null : null;
+  const zoomPhoto: DrivePhoto | null = zoomId
+    ? (gallery.photos.find((p) => p.id === zoomId) ?? null)
+    : null;
 
   function handleSubmit() {
     if (album.locked) return;
@@ -128,23 +129,34 @@ export function ClientView({
           </div>
         </div>
 
+        {gallery.error && (
+          <div className="lockBanner" style={{ borderColor: '#7a3b3b', color: '#e6a0a0', background: '#211313' }}>
+            Could not load photos from Google Drive: {gallery.error}
+          </div>
+        )}
+
         <div className="folderBar">
-          {album.events.map((f) => (
-            <button
-              key={f}
-              className={'folderTab' + (f === activeFolder ? ' active' : '')}
-              onClick={() => setFolder(f)}
-            >
-              {f}{' '}
-              <span style={{ opacity: 0.7 }}>
-                ({photos.filter((p) => p.folder === f).length})
-              </span>
-            </button>
-          ))}
+          {gallery.loadingFolders ? (
+            <span className="muted tiny">Loading events…</span>
+          ) : gallery.folders.length === 0 ? (
+            <span className="muted tiny">No event folders found.</span>
+          ) : (
+            gallery.folders.map((f) => (
+              <button
+                key={f.id}
+                className={
+                  'folderTab' + (f.id === gallery.activeFolderId ? ' active' : '')
+                }
+                onClick={() => gallery.setActiveFolderId(f.id)}
+              >
+                {f.name}
+              </button>
+            ))
+          )}
         </div>
 
         <div className="galleryToolbar">
-          <h3>{activeFolder} photographs</h3>
+          <h3>{activeFolderName ? activeFolderName + ' photographs' : 'Photographs'}</h3>
           <div className="filterButtons">
             {FILTERS.map((f) => (
               <button
@@ -159,11 +171,12 @@ export function ClientView({
         </div>
 
         <div className="photoGrid">
-          {visiblePhotos.length === 0 ? (
-            <div
-              className="empty"
-              style={{ gridColumn: '1/-1', color: '#aaa' }}
-            >
+          {gallery.loadingPhotos ? (
+            <div className="empty" style={{ gridColumn: '1/-1', color: '#aaa' }}>
+              Loading photos…
+            </div>
+          ) : visiblePhotos.length === 0 ? (
+            <div className="empty" style={{ gridColumn: '1/-1', color: '#aaa' }}>
               No photos in this view yet.
             </div>
           ) : (
@@ -175,7 +188,12 @@ export function ClientView({
                   key={p.id}
                 >
                   <div className="photoThumb">
-                    <img src={p.url} alt={p.name} loading="lazy" />
+                    <img
+                      src={p.thumbnail ?? p.url}
+                      alt={p.name}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
                     <button
                       className="zoomBtn"
                       aria-label={'Zoom ' + p.name}
@@ -265,7 +283,11 @@ export function ClientView({
                 ×
               </button>
             </div>
-            <img src={zoomPhoto.url} alt={zoomPhoto.name} />
+            <img
+              src={zoomPhoto.url}
+              alt={zoomPhoto.name}
+              referrerPolicy="no-referrer"
+            />
             <div className="zoomCaption">
               <span className="muted">Select this photo for:</span>
               <div className="markRow" style={{ width: 'min(360px,65%)' }}>
