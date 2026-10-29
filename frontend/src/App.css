@@ -131,9 +131,6 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1.07fr;
   background: white;
-  padding: 6px;
-  border: 1px solid #d9dce4;
-  border-radius: 8px;
   overflow: hidden;
 }
 .loginBrand {
