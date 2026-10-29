@@ -36,7 +36,7 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
     <section id="clientGate">
       <div className="gateBg" />
       <div className="gateInner">
-        <BrandMark />
+        <BrandMark src="/logotrans.png" imgClassName="gateLogo" />
         <div className="eyebrow">A STORY IN EVERY FRAME</div>
         <h1 className="script">{album.name}</h1>
         <div className="subtitle">{album.subtitle}</div>

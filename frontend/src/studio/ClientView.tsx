@@ -73,10 +73,15 @@ export function ClientView({
   return (
     <section id="clientView">
       <header className="clientHeader">
-        <div className="clientBrand">
-          <BrandMark full={false} />
-          <div className="brandName">MAGIC FRAMES</div>
-        </div>
+        <a
+          className="clientBrand"
+          href="https://magicframes.co.in"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <BrandMark src="/logotrans.png" imgClassName="headerLogo" />
+          <div className="brandName">magicframes.co.in</div>
+        </a>
         <div className="clientHeadRight">
           <SocialIcons />
           <button className="btn outline small" onClick={onExit}>
@@ -254,9 +259,17 @@ export function ClientView({
       </main>
 
       <footer className="clientFooter">
-        <BrandMark full={false} />
+        <BrandMark src="/logotrans.png" imgClassName="footerLogo" />
         <div>
-          Captured with care · <span className="gold">MAGICFRAMES.CO.IN</span>
+          Captured with care ·{' '}
+          <a
+            className="gold"
+            href="https://magicframes.co.in"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            MAGICFRAMES.CO.IN
+          </a>
         </div>
       </footer>
 

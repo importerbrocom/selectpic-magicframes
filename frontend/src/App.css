@@ -1678,3 +1678,22 @@ a.social {
     width: 80px;
   }
 }
+
+/* Client-page logo images */
+.gateLogo {
+  width: min(42%, 180px);
+  height: auto;
+  margin: 0 auto 55px;
+}
+a.clientBrand {
+  text-decoration: none;
+}
+.headerLogo {
+  width: 54px;
+  height: auto;
+}
+.footerLogo {
+  width: 70px;
+  height: auto;
+  margin: 0 auto 12px;
+}
