@@ -1544,3 +1544,20 @@ button:disabled {
 .profileCard form .btn {
   margin-top: 4px;
 }
+
+/* Social icons render as anchors on client pages */
+a.social {
+  text-decoration: none;
+}
+
+/* Settings account grid */
+.settingsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.settingsAccount {
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+}

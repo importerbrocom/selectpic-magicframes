@@ -20,7 +20,7 @@ const DEFAULT_PROFILE: Profile = {
   photo: null,
 };
 
-function loadProfile(): Profile {
+export function loadProfile(): Profile {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (!raw) return DEFAULT_PROFILE;

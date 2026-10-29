@@ -4,7 +4,8 @@ import { downloadAlbumCSV, selectionCounts, selectionStatus } from './helpers';
 import { parseFolderId } from './drive';
 import { photos } from './data';
 import { StaffView } from './StaffView';
-import { ProfileView } from './ProfileView';
+import { ProfileView, loadProfile } from './ProfileView';
+import { SettingsView } from './SettingsView';
 import type { Album, AdminTab, SelectionType, StaffMember } from './types';
 
 interface AdminViewProps {
@@ -484,28 +485,19 @@ export function AdminView({
 
         {/* Settings */}
         <div className={'adminContent' + (tab === 'settings' ? ' active' : '')}>
-          <div className="panel" style={{ padding: 25, maxWidth: 650 }}>
-            <h2 className="sectionTitle">Settings</h2>
-            <p>Client selection rules</p>
-            <label className="remember">
-              <input type="checkbox" defaultChecked /> Require password for every
-              client album
-            </label>
-            <label className="remember">
-              <input type="checkbox" defaultChecked /> Lock selections after final
-              submission
-            </label>
-            <label className="remember">
-              <input type="checkbox" defaultChecked /> Allow CSV export by selection
-              type
-            </label>
-            <button
-              className="btn goldbtn"
-              onClick={() => showToast('Settings saved for this demo.')}
-            >
-              Save settings
-            </button>
-          </div>
+          <SettingsView
+            adminName={loadProfile().name}
+            adminEmail={loadProfile().email}
+            onEditProfile={() => {
+              setDetailId(null);
+              setTab('profile');
+            }}
+            onManageStaff={() => {
+              setDetailId(null);
+              setTab('staff');
+            }}
+            showToast={showToast}
+          />
         </div>
       </main>
 

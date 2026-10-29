@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BrandMark } from './BrandMark';
+import { SocialIcons } from './SocialIcons';
 import { selectionCounts } from './helpers';
 import { useDriveGallery } from './useDriveGallery';
 import type { DrivePhoto } from './drive';
@@ -77,12 +78,7 @@ export function ClientView({
           <div className="brandName">MAGIC FRAMES</div>
         </div>
         <div className="clientHeadRight">
-          <div className="socials">
-            <button className="social">◎</button>
-            <button className="social">◉</button>
-            <button className="social">f</button>
-            <button className="social">℗</button>
-          </div>
+          <SocialIcons />
           <button className="btn outline small" onClick={onExit}>
             Exit album
           </button>

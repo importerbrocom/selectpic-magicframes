@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
+import { SocialIcons } from './SocialIcons';
 import type { Album } from './types';
 
 interface ClientGateProps {
@@ -60,20 +61,7 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
           </button>
           <div className="gateError">{error}</div>
         </form>
-        <div className="socials gateSocial">
-          <button className="social" title="Instagram">
-            ◎
-          </button>
-          <button className="social" title="WhatsApp">
-            ◉
-          </button>
-          <button className="social" title="Facebook">
-            f
-          </button>
-          <button className="social" title="Pinterest">
-            ℗
-          </button>
-        </div>
+        <SocialIcons className="gateSocial" />
       </div>
     </section>
   );
