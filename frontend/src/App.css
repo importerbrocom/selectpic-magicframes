@@ -1730,7 +1730,8 @@ a.clientBrand {
   font-weight: 100;
   color: var(--accent);
   letter-spacing: 0.025em;
-  line-height: 1;
+  line-height: 1.3;
+  padding-bottom: 2px;
   font-size: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
