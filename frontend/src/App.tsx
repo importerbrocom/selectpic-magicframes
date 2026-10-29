@@ -1,150 +1,130 @@
 import { useCallback, useEffect, useState } from 'react';
 import './App.css';
-import { api } from './api';
-import type { Choice, DriveImage, GroupedSelections, Project } from './types';
-import { ProjectBar } from './components/ProjectBar';
-import { DriveToolbar } from './components/DriveToolbar';
-import { Gallery } from './components/Gallery';
-import { SelectionSummary } from './components/SelectionSummary';
+import { initialAlbums } from './studio/data';
+import type { Album, Screen, SelectionType } from './studio/types';
+import { useToast } from './studio/useToast';
+import { LoginView } from './studio/LoginView';
+import { AdminView } from './studio/AdminView';
+import { ClientGate } from './studio/ClientGate';
+import { ClientView } from './studio/ClientView';
 
-const EMPTY_SELECTIONS: GroupedSelections = { bride: [], groom: [] };
+const ADMIN_EMAIL = 'admin@magicframes.test';
+const ADMIN_PASSWORD = 'password';
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [images, setImages] = useState<DriveImage[]>([]);
-  const [selections, setSelections] = useState<GroupedSelections>(EMPTY_SELECTIONS);
+  const [albums, setAlbums] = useState<Album[]>(initialAlbums);
+  const [screen, setScreen] = useState<Screen>('login');
+  const [activeAlbumId, setActiveAlbumId] = useState<number>(initialAlbums[0].id);
+  const { message: toast, showToast } = useToast();
 
-  const [loadingImages, setLoadingImages] = useState(false);
-  const [busyFileId, setBusyFileId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const activeAlbum =
+    albums.find((a) => a.id === activeAlbumId) ?? albums[0] ?? null;
 
-  // Load the project list on mount.
-  useEffect(() => {
-    api
-      .listProjects()
-      .then((res) => setProjects(res.data))
-      .catch((e: Error) => setError(e.message));
+  const openClientGate = useCallback((id: number) => {
+    setActiveAlbumId(id);
+    setScreen('clientGate');
+    if (location.hash !== '#client-' + id) {
+      history.replaceState(null, '', '#client-' + id);
+    }
   }, []);
 
-  // Load selections whenever the active project changes.
-  const loadSelections = useCallback((projectId: number) => {
-    api
-      .getSelections(projectId)
-      .then((res) => setSelections(res.data))
-      .catch((e: Error) => setError(e.message));
-  }, []);
-
+  // Deep-link support: #client-<id> jumps straight to that album's gate.
   useEffect(() => {
-    if (activeProject) {
-      loadSelections(activeProject.id);
+    function fromHash() {
+      const match = location.hash.match(/^#client-(\d+)$/);
+      if (match) {
+        const id = Number(match[1]);
+        if (albums.some((a) => a.id === id)) openClientGate(id);
+      }
+    }
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    return () => window.removeEventListener('hashchange', fromHash);
+  }, [albums, openClientGate]);
+
+  function handleLogin(email: string, password: string) {
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      setScreen('admin');
+      showToast('Welcome to Magic Frames Studio');
     } else {
-      setSelections(EMPTY_SELECTIONS);
-    }
-  }, [activeProject, loadSelections]);
-
-  async function handleCreateProject(payload: {
-    name: string;
-    google_drive_folder_id?: string;
-    bride_name?: string;
-    groom_name?: string;
-  }) {
-    setError(null);
-    try {
-      const res = await api.createProject(payload);
-      setProjects((prev) => [res.data, ...prev]);
-      setActiveProject(res.data);
-      setImages([]);
-    } catch (e) {
-      setError((e as Error).message);
+      showToast('Invalid demo credentials. Use admin@magicframes.test / password.');
     }
   }
 
-  function handleSelectProject(project: Project) {
-    setActiveProject(project);
-    setImages([]);
-    setError(null);
+  function handleCreateAlbum(data: Omit<Album, 'id'>): number {
+    const id = Math.max(0, ...albums.map((a) => a.id)) + 1;
+    const album: Album = { ...data, id };
+    setAlbums((prev) => [album, ...prev]);
+    setActiveAlbumId(id);
+    return id;
   }
 
-  async function handleFetchImages(folderId: string) {
-    if (!activeProject) return;
-    setLoadingImages(true);
-    setError(null);
-    try {
-      const res = await api.fetchDriveImages({
-        folder_id: folderId,
-        project_id: activeProject.id,
-      });
-      setImages(res.data);
-    } catch (e) {
-      setError((e as Error).message);
-      setImages([]);
-    } finally {
-      setLoadingImages(false);
-    }
+  function handleClientUnlock() {
+    if (!activeAlbum) return;
+    setAlbums((prev) =>
+      prev.map((a) =>
+        a.id === activeAlbum.id ? { ...a, views: a.views + 1 } : a,
+      ),
+    );
+    setScreen('client');
   }
 
-  async function handleToggle(image: DriveImage, choice: Choice) {
-    if (!activeProject) return;
-    setBusyFileId(image.file_id);
-    setError(null);
-    try {
-      await api.saveSelection(activeProject.id, {
-        file_id: image.file_id,
-        file_name: image.name,
-        thumbnail_link: image.thumbnail_link ?? image.image_url,
-        choice,
-      });
-      // Re-sync from the server so the two sides stay authoritative.
-      loadSelections(activeProject.id);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusyFileId(null);
-    }
+  function handleMark(photoId: string, type: SelectionType) {
+    if (!activeAlbum || activeAlbum.locked) return;
+    setAlbums((prev) =>
+      prev.map((a) => {
+        if (a.id !== activeAlbum.id) return a;
+        const selections = { ...a.selections };
+        if (selections[photoId] === type) delete selections[photoId];
+        else selections[photoId] = type;
+        return { ...a, selections };
+      }),
+    );
+  }
+
+  function handleSubmitSelections() {
+    if (!activeAlbum) return;
+    setAlbums((prev) =>
+      prev.map((a) =>
+        a.id === activeAlbum.id
+          ? { ...a, locked: true, status: 'Completed' }
+          : a,
+      ),
+    );
+    showToast('Final selections submitted and locked.');
   }
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <h1>
-          <span className="app__title-accent">SelectPic</span> MagicFrames
-        </h1>
-        <p className="app__subtitle">Pick the perfect frames — bride &amp; groom, side by side.</p>
-      </header>
-
-      <ProjectBar
-        projects={projects}
-        activeProject={activeProject}
-        onSelect={handleSelectProject}
-        onCreate={handleCreateProject}
-      />
-
-      {error && <div className="alert alert--error">{error}</div>}
-
-      {activeProject ? (
-        <>
-          <DriveToolbar
-            project={activeProject}
-            onFetch={handleFetchImages}
-            loading={loadingImages}
-          />
-
-          <SelectionSummary project={activeProject} selections={selections} />
-
-          <main className="app__gallery">
-            <Gallery
-              images={images}
-              selections={selections}
-              onToggle={handleToggle}
-              loading={loadingImages}
-              busyFileId={busyFileId}
-            />
-          </main>
-        </>
-      ) : (
-        <p className="app__empty">Create or select a project to get started.</p>
+    <>
+      {screen === 'login' && (
+        <LoginView onLogin={handleLogin} showToast={showToast} />
       )}
-    </div>
+
+      {screen === 'admin' && (
+        <AdminView
+          albums={albums}
+          onCreateAlbum={handleCreateAlbum}
+          onOpenClientGate={openClientGate}
+          onLogout={() => setScreen('login')}
+          showToast={showToast}
+        />
+      )}
+
+      {screen === 'clientGate' && activeAlbum && (
+        <ClientGate album={activeAlbum} onUnlock={handleClientUnlock} />
+      )}
+
+      {screen === 'client' && activeAlbum && (
+        <ClientView
+          album={activeAlbum}
+          onMark={handleMark}
+          onSubmit={handleSubmitSelections}
+          onExit={() => setScreen('clientGate')}
+          showToast={showToast}
+        />
+      )}
+
+      {toast && <div className="toast">{toast}</div>}
+    </>
   );
 }

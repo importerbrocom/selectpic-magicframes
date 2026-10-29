@@ -1,32 +1,52 @@
-# React + TypeScript + Vite
+# Magic Frames — Wedding Selection Studio (frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite single-page app implementing the **Magic Frames
+Wedding Selection Studio** theme. It is a fully client-side demo of the studio
+experience, with four screens wired together in `src/App.tsx`:
 
-Currently, two official plugins are available:
+| Screen | Component | Purpose |
+|--------|-----------|---------|
+| Admin sign-in | `studio/LoginView.tsx` | Studio admin login (demo: `admin@magicframes.test` / `password`). |
+| Admin dashboard | `studio/AdminView.tsx` | Stats, recent albums, album table, create-album form, staff/profile/settings tabs, per-album Manage modal and CSV export. |
+| Client gate | `studio/ClientGate.tsx` | Password landing page for a private client album. |
+| Client portal | `studio/ClientView.tsx` | Per-folder gallery where the couple marks each photo for **Bride**, **Groom** or **Both**, with zoom, filters, and a submit-and-lock flow. |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Layout
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+├── App.tsx            # Screen router + app state (albums, selections, toast)
+├── App.css            # Full Magic Frames theme stylesheet
+└── studio/
+    ├── types.ts       # Album, Photo, Selections, Screen, …
+    ├── data.ts        # Seed albums + demo photos
+    ├── helpers.ts     # selectionCounts(), downloadAlbumCSV()
+    ├── useToast.ts     # Transient toast hook
+    ├── BrandMark.tsx  # Script wordmark
+    ├── LoginView.tsx
+    ├── AdminView.tsx
+    ├── ClientGate.tsx
+    └── ClientView.tsx
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Deep links
+
+Opening `#client-<albumId>` (e.g. the link copied from the admin **Manage**
+modal) jumps straight to that album's password gate.
+
+### Fonts
+
+The theme loads **DM Sans**, **Playfair Display**, and **Great Vibes** from
+Google Fonts via `index.html`.
+
+## Running locally
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # type-check + production build
+npm run lint     # oxlint
+```
+
+> Note: the demo data and selection state live entirely in the browser; this
+> theme does not yet call the Laravel API.
