@@ -1230,3 +1230,176 @@ button:disabled {
     font-size: 24px;
   }
 }
+
+/* =====================================================================
+   ADMIN PANEL — theme: modern  (scoped to [data-theme="modern"])
+   Design tokens + Inter typography per the studio design system.
+   ===================================================================== */
+#adminView[data-theme='modern'] {
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --text: #1c1c1c;
+  --muted: #8a8a8a;
+  --accent: #111111;
+  --accent-contrast: #ffffff;
+  --card-radius: 0.5rem;
+  --card-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.15);
+  --heading-font: 'Inter', system-ui, sans-serif;
+  --body-font: 'Inter', system-ui, -apple-system, sans-serif;
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body-font);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+#adminView[data-theme='modern'] h1,
+#adminView[data-theme='modern'] h2,
+#adminView[data-theme='modern'] h3,
+#adminView[data-theme='modern'] .sectionTitle,
+#adminView[data-theme='modern'] .detailName,
+#adminView[data-theme='modern'] .detailCardTitle {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Type scale */
+#adminView[data-theme='modern'] .topline h1 {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .sectionTitle {
+  font-size: 1.25rem; /* 20px */
+}
+#adminView[data-theme='modern'] .detailCardTitle {
+  font-size: 1.25rem;
+}
+#adminView[data-theme='modern'] .detailName {
+  font-size: 1.875rem;
+}
+#adminView[data-theme='modern'] .stat strong,
+#adminView[data-theme='modern'] .detailStatValue {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .detailStatValue {
+  font-size: 1.125rem;
+}
+#adminView[data-theme='modern'] .stat .label,
+#adminView[data-theme='modern'] .detailStatLabel,
+#adminView[data-theme='modern'] .formSectionLabel {
+  font-size: 0.75rem; /* 12px */
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .muted,
+#adminView[data-theme='modern'] .tiny,
+#adminView[data-theme='modern'] .albumMeta,
+#adminView[data-theme='modern'] .albumInfo p,
+#adminView[data-theme='modern'] .detailSubtitle {
+  color: var(--muted);
+}
+
+/* Surfaces / cards */
+#adminView[data-theme='modern'] {
+  /* sidebar + main inherit --bg */
+}
+#adminView[data-theme='modern'] .sidebar {
+  background: var(--surface);
+  border-right: 1px solid #ececea;
+}
+#adminView[data-theme='modern'] .panel,
+#adminView[data-theme='modern'] .adminTable {
+  background: var(--surface);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+#adminView[data-theme='modern'] .detailCover {
+  border-top-left-radius: var(--card-radius);
+  border-top-right-radius: var(--card-radius);
+}
+
+/* Nav */
+#adminView[data-theme='modern'] .nav button {
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #3a3a3a;
+  border-radius: var(--card-radius);
+}
+#adminView[data-theme='modern'] .nav button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Buttons — 14px / medium / rounded-lg */
+#adminView[data-theme='modern'] .btn {
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--card-radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  letter-spacing: 0;
+}
+#adminView[data-theme='modern'] .btn.goldbtn {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+#adminView[data-theme='modern'] .btn.outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #dcdcd8;
+}
+#adminView[data-theme='modern'] .btn.outline:hover {
+  background: #f0f0ee;
+}
+#adminView[data-theme='modern'] .btn.danger,
+#adminView[data-theme='modern'] .detailDelete {
+  background: transparent;
+  color: #d93025;
+  border: 1px solid #f0c4c0;
+}
+#adminView[data-theme='modern'] .btn.danger {
+  background: #d93025;
+  color: #fff;
+  border: 0;
+}
+
+/* Inputs */
+#adminView[data-theme='modern'] .field input,
+#adminView[data-theme='modern'] .albumSearch,
+#adminView[data-theme='modern'] .shareRow input,
+#adminView[data-theme='modern'] .toolbar input {
+  font-family: var(--body-font);
+  background: #fff;
+  border: 1px solid #e3e3e0;
+  border-radius: var(--card-radius);
+  color: var(--text);
+}
+#adminView[data-theme='modern'] .field input:focus,
+#adminView[data-theme='modern'] .albumSearch:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+#adminView[data-theme='modern'] .field label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Status pills keep semantic colors; align radius */
+#adminView[data-theme='modern'] .statusPill {
+  border-radius: 999px;
+}
+
+/* Section card used in create/edit form */
+#adminView[data-theme='modern'] .formSection {
+  background: #fafafa;
+  border-color: #ececea;
+  border-radius: var(--card-radius);
+}

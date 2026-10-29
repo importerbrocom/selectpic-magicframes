@@ -166,7 +166,7 @@ export function AdminView({
   }
 
   return (
-    <section id="adminView">
+    <section id="adminView" data-theme="modern">
       <aside className="sidebar">
         <div className="sideLogo">
           <BrandMark />
