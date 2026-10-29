@@ -237,8 +237,14 @@ button:disabled {
   padding: 28px 22px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   background: #f8f8f6;
+  /* Pin the sidebar to the viewport so the bottom (name / email / logout)
+     stays visible while the main content scrolls. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
 }
 .sideLogo {
   width: 84px;
@@ -861,6 +867,7 @@ button:disabled {
   }
   .sidebar {
     min-height: auto;
+    height: auto;
     padding: 12px 14px;
     position: sticky;
     top: 0;
