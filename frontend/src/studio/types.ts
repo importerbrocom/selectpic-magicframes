@@ -32,6 +32,17 @@ export interface Album {
   lastSynced?: string;
 }
 
+export type StaffStatus = 'active' | 'suspended';
+
+export interface StaffMember {
+  id: number;
+  name: string;
+  email: string;
+  /** Demo-only temporary password set at creation / reset. */
+  tempPassword: string;
+  status: StaffStatus;
+}
+
 export type Screen = 'login' | 'admin' | 'clientGate' | 'client';
 
 export type AdminTab =

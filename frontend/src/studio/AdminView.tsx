@@ -3,13 +3,18 @@ import { BrandMark } from './BrandMark';
 import { downloadAlbumCSV, selectionCounts, selectionStatus } from './helpers';
 import { parseFolderId } from './drive';
 import { photos } from './data';
-import type { Album, AdminTab, SelectionType } from './types';
+import { StaffView } from './StaffView';
+import type { Album, AdminTab, SelectionType, StaffMember } from './types';
 
 interface AdminViewProps {
   albums: Album[];
+  staff: StaffMember[];
   onCreateAlbum: (album: Omit<Album, 'id'>) => number;
   onUpdateAlbum: (id: number, patch: Partial<Album>) => void;
   onDeleteAlbum: (id: number) => void;
+  onAddStaff: (data: Omit<StaffMember, 'id' | 'status'>) => boolean;
+  onUpdateStaff: (id: number, patch: Partial<StaffMember>) => void;
+  onDeleteStaff: (id: number) => void;
   onOpenClientGate: (id: number) => void;
   onLogout: () => void;
   showToast: (msg: string) => void;
@@ -43,9 +48,13 @@ function albumMeta(a: Album): string {
 
 export function AdminView({
   albums,
+  staff,
   onCreateAlbum,
   onUpdateAlbum,
   onDeleteAlbum,
+  onAddStaff,
+  onUpdateStaff,
+  onDeleteStaff,
   onOpenClientGate,
   onLogout,
   showToast,
@@ -55,6 +64,7 @@ export function AdminView({
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [addingStaff, setAddingStaff] = useState(false);
 
   // Create / edit form state.
   const [newName, setNewName] = useState('');
@@ -223,9 +233,15 @@ export function AdminView({
                 ? detailAlbum.name
                 : titleFor(tab)}
           </h1>
-          <button className="btn" onClick={openCreate}>
-            ＋ New Album
-          </button>
+          {tab === 'staff' ? (
+            <button className="btn" onClick={() => setAddingStaff(true)}>
+              ＋ Add staff
+            </button>
+          ) : (
+            <button className="btn" onClick={openCreate}>
+              ＋ New Album
+            </button>
+          )}
         </div>
 
         {/* Dashboard */}
@@ -447,33 +463,15 @@ export function AdminView({
 
         {/* Staff */}
         <div className={'adminContent' + (tab === 'staff' ? ' active' : '')}>
-          <div className="panel" style={{ padding: 25 }}>
-            <h2 className="sectionTitle">Studio staff</h2>
-            <p>Manage team access in your production setup.</p>
-            <table className="adminTable">
-              <tbody>
-                <tr>
-                  <th>NAME</th>
-                  <th>ROLE</th>
-                  <th>STATUS</th>
-                </tr>
-                <tr>
-                  <td>Studio Admin</td>
-                  <td>Administrator</td>
-                  <td>
-                    <span className="status">Active</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Photo Editor</td>
-                  <td>Editor</td>
-                  <td>
-                    <span className="status pending">Invite pending</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <StaffView
+            staff={staff}
+            adding={addingStaff}
+            setAdding={setAddingStaff}
+            onAdd={onAddStaff}
+            onUpdate={onUpdateStaff}
+            onDelete={onDeleteStaff}
+            showToast={showToast}
+          />
         </div>
 
         {/* Profile */}

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import { initialAlbums } from './studio/data';
-import type { Album, Screen, SelectionType } from './studio/types';
+import type {
+  Album,
+  Screen,
+  SelectionType,
+  StaffMember,
+} from './studio/types';
 import { useToast } from './studio/useToast';
 import { LoginView } from './studio/LoginView';
 import { AdminView } from './studio/AdminView';
@@ -11,6 +16,28 @@ import { ClientView } from './studio/ClientView';
 const ADMIN_EMAIL = 'admin@magicframes.test';
 const ADMIN_PASSWORD = 'password';
 const STORAGE_KEY = 'magicframes.albums.v1';
+const STAFF_KEY = 'magicframes.staff.v1';
+
+const seedStaff: StaffMember[] = [
+  {
+    id: 1,
+    name: 'Studio Admin',
+    email: 'admin@magicframes.test',
+    tempPassword: 'password',
+    status: 'active',
+  },
+];
+
+function loadStaff(): StaffMember[] {
+  try {
+    const raw = localStorage.getItem(STAFF_KEY);
+    if (!raw) return seedStaff;
+    const stored = JSON.parse(raw) as StaffMember[];
+    return Array.isArray(stored) && stored.length ? stored : seedStaff;
+  } catch {
+    return seedStaff;
+  }
+}
 
 /**
  * Load albums from localStorage, falling back to the seed data. Any seed album
@@ -33,6 +60,7 @@ function loadAlbums(): Album[] {
 
 export default function App() {
   const [albums, setAlbums] = useState<Album[]>(loadAlbums);
+  const [staff, setStaff] = useState<StaffMember[]>(loadStaff);
   const [screen, setScreen] = useState<Screen>('login');
   const [activeAlbumId, setActiveAlbumId] = useState<number>(
     () => loadAlbums()[0]?.id ?? initialAlbums[0].id,
@@ -48,6 +76,14 @@ export default function App() {
       // Storage may be unavailable (private mode / quota); ignore.
     }
   }, [albums]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+    } catch {
+      // ignore
+    }
+  }, [staff]);
 
   const activeAlbum =
     albums.find((a) => a.id === activeAlbumId) ?? albums[0] ?? null;
@@ -101,6 +137,31 @@ export default function App() {
     setAlbums((prev) => prev.filter((a) => a.id !== id));
   }
 
+  function handleAddStaff(data: Omit<StaffMember, 'id' | 'status'>): boolean {
+    const email = data.email.trim().toLowerCase();
+    if (staff.some((s) => s.email.toLowerCase() === email)) return false;
+    const id = Math.max(0, ...staff.map((s) => s.id)) + 1;
+    setStaff((prev) => [
+      ...prev,
+      {
+        id,
+        name: data.name.trim(),
+        email: data.email.trim(),
+        tempPassword: data.tempPassword,
+        status: 'active',
+      },
+    ]);
+    return true;
+  }
+
+  function handleUpdateStaff(id: number, patch: Partial<StaffMember>) {
+    setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+
+  function handleDeleteStaff(id: number) {
+    setStaff((prev) => prev.filter((s) => s.id !== id));
+  }
+
   function handleClientUnlock() {
     if (!activeAlbum) return;
     setAlbums((prev) =>
@@ -145,9 +206,13 @@ export default function App() {
       {screen === 'admin' && (
         <AdminView
           albums={albums}
+          staff={staff}
           onCreateAlbum={handleCreateAlbum}
           onUpdateAlbum={handleUpdateAlbum}
           onDeleteAlbum={handleDeleteAlbum}
+          onAddStaff={handleAddStaff}
+          onUpdateStaff={handleUpdateStaff}
+          onDeleteStaff={handleDeleteStaff}
           onOpenClientGate={openClientGate}
           onLogout={() => setScreen('login')}
           showToast={showToast}
