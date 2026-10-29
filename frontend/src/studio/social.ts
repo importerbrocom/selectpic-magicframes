@@ -17,13 +17,21 @@ export const EMPTY_SOCIAL: SocialLinks = {
   pinterest: '',
 };
 
+/** Sensible defaults so the client header shows icons before Settings are set. */
+export const DEFAULT_SOCIAL: SocialLinks = {
+  instagram: 'https://www.instagram.com/magicframes.co.in',
+  whatsapp: 'https://wa.me/919539047575',
+  facebook: 'https://www.facebook.com/magicframes.co.in',
+  pinterest: 'https://pin.it/magicframes',
+};
+
 export function loadSocialLinks(): SocialLinks {
   try {
     const raw = localStorage.getItem(SOCIAL_KEY);
-    if (!raw) return EMPTY_SOCIAL;
-    return { ...EMPTY_SOCIAL, ...(JSON.parse(raw) as Partial<SocialLinks>) };
+    if (!raw) return { ...DEFAULT_SOCIAL };
+    return { ...DEFAULT_SOCIAL, ...(JSON.parse(raw) as Partial<SocialLinks>) };
   } catch {
-    return EMPTY_SOCIAL;
+    return { ...DEFAULT_SOCIAL };
   }
 }
 
@@ -38,13 +46,11 @@ export function saveSocialLinks(links: SocialLinks): void {
 export interface SocialIcon {
   key: keyof SocialLinks;
   label: string;
-  glyph: string;
 }
 
-/** Icon glyphs matching the existing theme buttons. */
 export const SOCIAL_ICONS: SocialIcon[] = [
-  { key: 'instagram', label: 'Instagram', glyph: '◎' },
-  { key: 'whatsapp', label: 'WhatsApp', glyph: '◉' },
-  { key: 'facebook', label: 'Facebook', glyph: 'f' },
-  { key: 'pinterest', label: 'Pinterest', glyph: '℗' },
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'whatsapp', label: 'WhatsApp' },
+  { key: 'facebook', label: 'Facebook' },
+  { key: 'pinterest', label: 'Pinterest' },
 ];
