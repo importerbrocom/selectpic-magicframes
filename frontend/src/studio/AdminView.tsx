@@ -246,11 +246,11 @@ export function AdminView({
             <button className="btn" onClick={() => setAddingStaff(true)}>
               ＋ Add staff
             </button>
-          ) : (
+          ) : tab === 'dashboard' || (tab === 'albums' && !detailAlbum) ? (
             <button className="btn" onClick={openCreate}>
               ＋ New Album
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Dashboard */}
