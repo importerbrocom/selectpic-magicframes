@@ -1487,3 +1487,60 @@ button:disabled {
     width: 100%;
   }
 }
+
+/* ---- Profile page ---- */
+.profilePage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.profileCard {
+  padding: 24px 26px 26px;
+}
+.profileCardTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 18px;
+}
+.profileAccount {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.profileAccountValue {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.profilePhotoRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #d9d9d6;
+  color: #555;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.profileCard form .btn {
+  margin-top: 4px;
+}

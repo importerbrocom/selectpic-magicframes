@@ -4,6 +4,7 @@ import { downloadAlbumCSV, selectionCounts, selectionStatus } from './helpers';
 import { parseFolderId } from './drive';
 import { photos } from './data';
 import { StaffView } from './StaffView';
+import { ProfileView } from './ProfileView';
 import type { Album, AdminTab, SelectionType, StaffMember } from './types';
 
 interface AdminViewProps {
@@ -231,7 +232,9 @@ export function AdminView({
               ? 'Edit Album'
               : tab === 'albums' && detailAlbum
                 ? detailAlbum.name
-                : titleFor(tab)}
+                : tab === 'profile'
+                  ? 'My Profile'
+                  : titleFor(tab)}
           </h1>
           {tab === 'staff' ? (
             <button className="btn" onClick={() => setAddingStaff(true)}>
@@ -476,23 +479,7 @@ export function AdminView({
 
         {/* Profile */}
         <div className={'adminContent' + (tab === 'profile' ? ' active' : '')}>
-          <div className="panel" style={{ padding: 25, maxWidth: 650 }}>
-            <h2 className="sectionTitle">Studio profile</h2>
-            <div className="field">
-              <label>Studio name</label>
-              <input defaultValue="Magic Frames" />
-            </div>
-            <div className="field">
-              <label>Contact email</label>
-              <input defaultValue="admin@magicframes.test" />
-            </div>
-            <button
-              className="btn goldbtn"
-              onClick={() => showToast('Profile saved in this demo view.')}
-            >
-              Save profile
-            </button>
-          </div>
+          <ProfileView showToast={showToast} />
         </div>
 
         {/* Settings */}
