@@ -1652,7 +1652,7 @@ a.social {
 
 /* Login split-screen: transparent logo centered on the black panel */
 .loginLogo {
-  width: min(62%, 320px);
+  width: min(42%, 210px);
   height: auto;
   margin: 0 auto;
 }
@@ -1668,13 +1668,13 @@ a.social {
 }
 .sideLogoImg {
   display: block;
-  width: 150px;
+  width: 110px;
   max-width: 100%;
   height: auto;
 }
 
 @media (max-width: 760px) {
   .sideLogoImg {
-    width: 90px;
+    width: 80px;
   }
 }
