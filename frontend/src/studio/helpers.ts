@@ -21,6 +21,21 @@ export function selectionCounts(album: Album): SelectionCounts {
   return counts;
 }
 
+export interface SelectionStatus {
+  /** Short label for the status pill. */
+  label: string;
+  /** 'done' = submitted, 'active' = in progress, 'idle' = awaiting. */
+  tone: 'done' | 'active' | 'idle';
+}
+
+/** Derive a selection-workflow status for an album. */
+export function selectionStatus(album: Album): SelectionStatus {
+  if (album.locked) return { label: 'Selections submitted', tone: 'done' };
+  const made = Object.keys(album.selections ?? {}).length;
+  if (made > 0) return { label: 'In progress', tone: 'active' };
+  return { label: 'Awaiting selection', tone: 'idle' };
+}
+
 /**
  * Build and download a CSV of an album's selections for the given type.
  * Returns false (and downloads nothing) when there are no matching selections.

@@ -1080,11 +1080,15 @@ button:disabled {
   border-radius: 999px;
   white-space: nowrap;
 }
-.statusPill.on {
+.statusPill.done {
   background: #e8f5e9;
   color: #2e7d32;
 }
-.statusPill.off {
+.statusPill.active {
+  background: #fff4df;
+  color: #9a6b17;
+}
+.statusPill.idle {
   background: #f0f0ee;
   color: #777;
 }

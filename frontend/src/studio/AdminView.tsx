@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
-import { downloadAlbumCSV, selectionCounts } from './helpers';
+import { downloadAlbumCSV, selectionCounts, selectionStatus } from './helpers';
 import { parseFolderId } from './drive';
 import { photos } from './data';
 import type { Album, AdminTab, SelectionType } from './types';
@@ -29,6 +29,18 @@ function titleFor(tab: AdminTab): string {
   return tab[0].toUpperCase() + tab.slice(1);
 }
 
+/** Meta line for an album card: photo count + how many have been selected. */
+function albumMeta(a: Album): string {
+  const made = Object.keys(a.selections ?? {}).length;
+  const photoPart = a.photos
+    ? `${a.photos.toLocaleString()} photos`
+    : a.driveFolderId
+      ? 'Drive folder'
+      : 'Demo photos';
+  const selPart = made > 0 ? `${made} selected` : 'None selected yet';
+  return `${photoPart} · ${selPart}`;
+}
+
 export function AdminView({
   albums,
   onCreateAlbum,
@@ -51,14 +63,18 @@ export function AdminView({
   const [newDriveLink, setNewDriveLink] = useState('');
   const [newCover, setNewCover] = useState('');
 
-  const totalPhotos = useMemo(
-    () => albums.reduce((sum, a) => sum + a.photos, 0),
-    [albums],
-  );
-  const activeCount = useMemo(
-    () => albums.filter((a) => !a.locked).length,
-    [albums],
-  );
+  const statusCounts = useMemo(() => {
+    let awaiting = 0;
+    let inProgress = 0;
+    let submitted = 0;
+    for (const a of albums) {
+      const tone = selectionStatus(a).tone;
+      if (tone === 'done') submitted += 1;
+      else if (tone === 'active') inProgress += 1;
+      else awaiting += 1;
+    }
+    return { awaiting, inProgress, submitted };
+  }, [albums]);
 
   const filteredAlbums = useMemo(() => {
     const q = search.toLowerCase();
@@ -220,16 +236,16 @@ export function AdminView({
               <strong>{albums.length}</strong>
             </div>
             <div className="panel stat">
-              <div className="label">ACTIVE</div>
-              <strong>{activeCount}</strong>
+              <div className="label">AWAITING SELECTION</div>
+              <strong>{statusCounts.awaiting}</strong>
             </div>
             <div className="panel stat">
-              <div className="label">PHOTOS</div>
-              <strong>{totalPhotos.toLocaleString()}</strong>
+              <div className="label">IN PROGRESS</div>
+              <strong>{statusCounts.inProgress}</strong>
             </div>
             <div className="panel stat">
-              <div className="label">ALBUM VIEWS</div>
-              <strong>{albums.reduce((s, a) => s + a.views, 0)}</strong>
+              <div className="label">SUBMITTED</div>
+              <strong>{statusCounts.submitted}</strong>
             </div>
           </div>
           <h2 className="sectionTitle">Recent Albums</h2>
@@ -247,20 +263,15 @@ export function AdminView({
                 <div className="albumInfo">
                   <div className="albumCardHead">
                     <h3>{a.name}</h3>
-                    <span className={'statusPill ' + (a.locked ? 'off' : 'on')}>
-                      {a.locked ? 'Disabled' : 'Active'}
-                    </span>
+                    {(() => {
+                      const s = selectionStatus(a);
+                      return (
+                        <span className={'statusPill ' + s.tone}>{s.label}</span>
+                      );
+                    })()}
                   </div>
                   <p>{a.subtitle}</p>
-                  <div className="albumMeta">
-                    {a.photos ? a.photos.toLocaleString() + ' photos' : 'Drive album'}
-                    {' · '}
-                    {a.events?.length
-                      ? a.events.length + ' events'
-                      : a.driveFolderId
-                        ? 'Drive'
-                        : 'Demo'}
-                  </div>
+                  <div className="albumMeta">{albumMeta(a)}</div>
                 </div>
               </article>
             ))}
@@ -289,9 +300,13 @@ export function AdminView({
                 const nowLocked = !detailAlbum.locked;
                 onUpdateAlbum(detailAlbum.id, {
                   locked: nowLocked,
-                  status: nowLocked ? 'Disabled' : 'In progress',
+                  status: nowLocked ? 'Selections submitted' : 'In progress',
                 });
-                showToast(nowLocked ? 'Album disabled.' : 'Album enabled.');
+                showToast(
+                  nowLocked
+                    ? 'Selections closed — the client can no longer edit.'
+                    : 'Selections reopened for the client.',
+                );
               }}
               onDelete={() => setDeletingId(detailAlbum.id)}
               onCopyLink={copyPrivateLink}
@@ -320,22 +335,17 @@ export function AdminView({
                       <div className="albumInfo">
                         <div className="albumCardHead">
                           <h3>{a.name}</h3>
-                          <span
-                            className={'statusPill ' + (a.locked ? 'off' : 'on')}
-                          >
-                            {a.locked ? 'Disabled' : 'Active'}
-                          </span>
+                          {(() => {
+                            const s = selectionStatus(a);
+                            return (
+                              <span className={'statusPill ' + s.tone}>
+                                {s.label}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <p>{a.subtitle}</p>
-                        <div className="albumMeta">
-                          {a.photos ? a.photos.toLocaleString() + ' photos' : 'Drive album'}
-                          {' · '}
-                          {a.events?.length
-                            ? a.events.length + ' events'
-                            : a.driveFolderId
-                              ? 'Drive'
-                              : 'Demo'}
-                        </div>
+                        <div className="albumMeta">{albumMeta(a)}</div>
                       </div>
                     </article>
                   ))}
@@ -349,12 +359,14 @@ export function AdminView({
         <div className={'adminContent' + (tab === 'create' ? ' active' : '')}>
           <div className="panel formCard" style={{ maxWidth: 760 }}>
             <h2 className="sectionTitle">
-              {editingId != null ? 'Edit album' : 'Create a client album'}
+              {editingId != null
+                ? 'Edit selection album'
+                : 'Create a selection album'}
             </h2>
             <p className="muted">
               {editingId != null
                 ? 'Update this album’s details, password or Drive folder.'
-                : 'Create a private client portal with its own password and unique link.'}
+                : 'Set up a private album the couple can open to select their photos.'}
             </p>
             <form className="createForm" onSubmit={handleCreate}>
               <div className="field">
@@ -583,6 +595,8 @@ function AlbumDetail({
 }: AlbumDetailProps) {
   const shareLink = `${location.href.split('#')[0]}#client-${album.id}`;
   const counts = selectionCounts(album);
+  const totalSelected = counts.bride + counts.groom + counts.both;
+  const status = selectionStatus(album);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(shareLink)}`;
 
   const eventsLabel = album.events?.length
@@ -594,15 +608,6 @@ function AlbumDetail({
   const lastSynced = album.lastSynced
     ? new Date(album.lastSynced).toLocaleString()
     : 'Never';
-
-  function shareWhatsApp() {
-    const text = `View the “${album.name}” photo album: ${shareLink}`;
-    window.open(
-      'https://wa.me/?text=' + encodeURIComponent(text),
-      '_blank',
-      'noopener',
-    );
-  }
 
   return (
     <div className="albumDetail">
@@ -620,9 +625,7 @@ function AlbumDetail({
                 <h2 className="detailName">{album.name}</h2>
                 <p className="detailSubtitle">{album.subtitle}</p>
               </div>
-              <span className={'statusPill ' + (album.locked ? 'off' : 'on')}>
-                {album.locked ? 'Disabled' : 'Active'}
-              </span>
+              <span className={'statusPill ' + status.tone}>{status.label}</span>
             </div>
 
             <div className="detailStats">
@@ -633,12 +636,12 @@ function AlbumDetail({
                 </div>
               </div>
               <div>
-                <div className="detailStatLabel">EVENTS</div>
-                <div className="detailStatValue">{eventsLabel}</div>
+                <div className="detailStatLabel">SELECTED</div>
+                <div className="detailStatValue">{totalSelected}</div>
               </div>
               <div>
-                <div className="detailStatLabel">FILM</div>
-                <div className="detailStatValue">—</div>
+                <div className="detailStatLabel">EVENTS</div>
+                <div className="detailStatValue">{eventsLabel}</div>
               </div>
               <div>
                 <div className="detailStatLabel">DRIVE</div>
@@ -654,16 +657,16 @@ function AlbumDetail({
 
             <div className="detailActions">
               <button className="btn" onClick={onView}>
-                View Album
+                Preview selection page
               </button>
               <button className="btn outline" onClick={onSync}>
-                Sync Now
+                Sync photos
               </button>
               <button className="btn outline" onClick={onEdit}>
                 Edit
               </button>
               <button className="btn outline" onClick={onToggleDisabled}>
-                {album.locked ? 'Enable' : 'Disable'}
+                {album.locked ? 'Reopen selections' : 'Close selections'}
               </button>
               <button className="btn outline detailDelete" onClick={onDelete}>
                 Delete
@@ -672,7 +675,7 @@ function AlbumDetail({
 
             <div className="detailExport">
               <div className="formSectionLabel" style={{ marginBottom: 10 }}>
-                EXPORT SELECTIONS
+                EXPORT SELECTED PHOTOS
               </div>
               <div className="detailExportRow">
                 <span className="countPill light">
@@ -715,11 +718,14 @@ function AlbumDetail({
           </div>
         </div>
 
-        {/* Right: share / analytics / enquiries / comments */}
+        {/* Right: selection link + selection progress */}
         <div className="detailSide">
           <div className="panel detailCard">
-            <h3 className="detailCardTitle">🎉 Album Ready to Share</h3>
-            <div className="formSectionLabel">SHARE LINK</div>
+            <h3 className="detailCardTitle">Client Selection Link</h3>
+            <p className="muted tiny" style={{ marginTop: -6, marginBottom: 12 }}>
+              Send this private link to the couple so they can mark their photos.
+            </p>
+            <div className="formSectionLabel">SELECTION LINK</div>
             <div className="shareRow">
               <input readOnly value={shareLink} />
               <button
@@ -730,21 +736,14 @@ function AlbumDetail({
               </button>
             </div>
             <button
-              className="btn"
-              style={{ width: '100%', marginTop: 12 }}
-              onClick={shareWhatsApp}
-            >
-              Share on WhatsApp
-            </button>
-            <button
               className="btn outline"
-              style={{ width: '100%', marginTop: 10 }}
+              style={{ width: '100%', marginTop: 12 }}
               onClick={onView}
             >
-              Open Album
+              Preview as client
             </button>
             <div className="formSectionLabel" style={{ marginTop: 18 }}>
-              QR CODE
+              SCAN TO OPEN
             </div>
             <img
               className="detailQr"
@@ -759,37 +758,32 @@ function AlbumDetail({
           </div>
 
           <div className="panel detailCard">
-            <h3 className="detailCardTitle">Analytics</h3>
+            <h3 className="detailCardTitle">Selection progress</h3>
             <div className="analyticsGrid">
               <div>
-                <div className="detailStatLabel">TOTAL VIEWS</div>
-                <div className="detailStatValue">{album.views}</div>
+                <div className="detailStatLabel">TOTAL SELECTED</div>
+                <div className="detailStatValue">{totalSelected}</div>
               </div>
               <div>
-                <div className="detailStatLabel">UNIQUE VISITORS</div>
-                <div className="detailStatValue">{album.views}</div>
+                <div className="detailStatLabel">BRIDE</div>
+                <div className="detailStatValue">{counts.bride}</div>
               </div>
               <div>
-                <div className="detailStatLabel">PHOTOS VIEWED</div>
-                <div className="detailStatValue">
-                  {counts.bride + counts.groom + counts.both}
-                </div>
+                <div className="detailStatLabel">GROOM</div>
+                <div className="detailStatValue">{counts.groom}</div>
               </div>
               <div>
-                <div className="detailStatLabel">DOWNLOADS</div>
-                <div className="detailStatValue">0</div>
+                <div className="detailStatLabel">BOTH</div>
+                <div className="detailStatValue">{counts.both}</div>
               </div>
             </div>
-          </div>
-
-          <div className="panel detailCard">
-            <h3 className="detailCardTitle">Enquiries (0)</h3>
-            <p className="muted tiny">No enquiries yet.</p>
-          </div>
-
-          <div className="panel detailCard">
-            <h3 className="detailCardTitle">Comments (0)</h3>
-            <p className="muted tiny">No comments yet.</p>
+            <p className="muted tiny" style={{ marginTop: 14 }}>
+              {album.locked
+                ? 'Selections submitted and locked by the client.'
+                : totalSelected > 0
+                  ? 'The client has started selecting photos.'
+                  : 'Waiting for the client to begin selecting.'}
+            </p>
           </div>
         </div>
       </div>
