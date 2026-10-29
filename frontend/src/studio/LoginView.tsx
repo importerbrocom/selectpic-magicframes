@@ -22,7 +22,7 @@ export function LoginView({ onLogin, showToast }: LoginViewProps) {
   return (
     <section id="loginView">
       <div className="loginBrand">
-        <BrandMark />
+        <BrandMark src="/logotrans.png" imgClassName="loginLogo" />
         <div className="brandUrl">MAGICFRAMES.CO.IN</div>
       </div>
       <div className="loginFormWrap">

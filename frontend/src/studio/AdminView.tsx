@@ -201,8 +201,8 @@ export function AdminView({
   return (
     <section id="adminView" data-theme="modern">
       <aside className="sidebar">
-        <div className="sideLogo">
-          <BrandMark />
+        <div className="sideLogo sideLogo--image">
+          <BrandMark src="/logo.png" imgClassName="sideLogoImg" />
         </div>
         <nav className="nav">
           {NAV.map((item) => (

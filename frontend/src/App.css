@@ -1635,3 +1635,37 @@ a.social {
   background: #b08b3e;
   color: #15110b;
 }
+
+/* ---- Image logos ---- */
+.brandLogo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Login split-screen: transparent logo centered on the black panel */
+.loginLogo {
+  width: min(62%, 320px);
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Admin sidebar wordmark (no white box when using an image) */
+.sideLogo--image {
+  width: auto;
+  height: auto;
+  background: transparent;
+  display: block;
+  place-items: initial;
+}
+.sideLogoImg {
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  .sideLogoImg {
+    width: 90px;
+  }
+}
