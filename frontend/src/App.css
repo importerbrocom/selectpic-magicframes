@@ -1731,7 +1731,7 @@ a.clientBrand {
   color: var(--accent);
   letter-spacing: 0.025em;
   line-height: 1;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1760,7 +1760,7 @@ a.clientBrand {
     height: 52px;
   }
   #clientView .clientBrand .brandName {
-    font-size: 1.25rem;
+    font-size: 1rem;
   }
   #clientView .clientHeadRight {
     gap: 8px;
@@ -1776,6 +1776,6 @@ a.clientBrand {
     height: 60px;
   }
   #clientView .clientBrand .brandName {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
   }
 }
