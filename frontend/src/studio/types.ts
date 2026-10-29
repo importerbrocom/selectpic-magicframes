@@ -28,6 +28,8 @@ export interface Album {
   views: number;
   locked: boolean;
   selections: Selections;
+  /** ISO timestamp of the last Drive sync, if any. */
+  lastSynced?: string;
 }
 
 export type Screen = 'login' | 'admin' | 'clientGate' | 'client';

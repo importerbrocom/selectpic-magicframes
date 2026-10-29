@@ -91,6 +91,16 @@ export default function App() {
     return id;
   }
 
+  function handleUpdateAlbum(id: number, patch: Partial<Album>) {
+    setAlbums((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    );
+  }
+
+  function handleDeleteAlbum(id: number) {
+    setAlbums((prev) => prev.filter((a) => a.id !== id));
+  }
+
   function handleClientUnlock() {
     if (!activeAlbum) return;
     setAlbums((prev) =>
@@ -136,6 +146,8 @@ export default function App() {
         <AdminView
           albums={albums}
           onCreateAlbum={handleCreateAlbum}
+          onUpdateAlbum={handleUpdateAlbum}
+          onDeleteAlbum={handleDeleteAlbum}
           onOpenClientGate={openClientGate}
           onLogout={() => setScreen('login')}
           showToast={showToast}

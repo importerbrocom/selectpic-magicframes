@@ -8,6 +8,8 @@ import type { Album, AdminTab, SelectionType } from './types';
 interface AdminViewProps {
   albums: Album[];
   onCreateAlbum: (album: Omit<Album, 'id'>) => number;
+  onUpdateAlbum: (id: number, patch: Partial<Album>) => void;
+  onDeleteAlbum: (id: number) => void;
   onOpenClientGate: (id: number) => void;
   onLogout: () => void;
   showToast: (msg: string) => void;
@@ -30,15 +32,19 @@ function titleFor(tab: AdminTab): string {
 export function AdminView({
   albums,
   onCreateAlbum,
+  onUpdateAlbum,
+  onDeleteAlbum,
   onOpenClientGate,
   onLogout,
   showToast,
 }: AdminViewProps) {
   const [tab, setTab] = useState<AdminTab>('dashboard');
   const [search, setSearch] = useState('');
-  const [manageId, setManageId] = useState<number | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Create form state.
+  // Create / edit form state.
   const [newName, setNewName] = useState('');
   const [newSubtitle, setNewSubtitle] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -59,9 +65,30 @@ export function AdminView({
     return albums.filter((a) => a.name.toLowerCase().includes(q));
   }, [albums, search]);
 
-  const manageAlbum = albums.find((a) => a.id === manageId) ?? null;
+  const detailAlbum = albums.find((a) => a.id === detailId) ?? null;
+  const deletingAlbum = albums.find((a) => a.id === deletingId) ?? null;
+
+  function startEdit(album: Album) {
+    setEditingId(album.id);
+    setNewName(album.name);
+    setNewSubtitle(album.subtitle);
+    setNewPassword(album.password);
+    setNewDriveLink(album.driveLink);
+    setNewCover(album.cover);
+    setTab('create');
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setNewName('');
+    setNewSubtitle('');
+    setNewPassword('');
+    setNewCover('');
+    setNewDriveLink('');
+  }
 
   function openCreate() {
+    resetForm();
     setTab('create');
   }
 
@@ -73,6 +100,23 @@ export function AdminView({
 
     if (driveLink && !driveFolderId) {
       showToast('That does not look like a valid Google Drive folder link.');
+      return;
+    }
+
+    if (editingId != null) {
+      onUpdateAlbum(editingId, {
+        name,
+        subtitle: newSubtitle.trim() || 'A Story in Every Frame',
+        password: newPassword.trim(),
+        driveLink,
+        driveFolderId,
+        cover: newCover.trim() || photos[0].url,
+      });
+      const id = editingId;
+      resetForm();
+      setTab('albums');
+      setDetailId(id);
+      showToast('Album updated.');
       return;
     }
 
@@ -89,11 +133,7 @@ export function AdminView({
       locked: false,
       selections: {},
     });
-    setNewName('');
-    setNewSubtitle('');
-    setNewPassword('');
-    setNewCover('');
-    setNewDriveLink('');
+    resetForm();
     setTab('albums');
     showToast('Private album created. Unique link and password are ready.');
   }
@@ -136,7 +176,11 @@ export function AdminView({
             <button
               key={item.tab}
               className={tab === item.tab ? 'active' : ''}
-              onClick={() => setTab(item.tab)}
+              onClick={() => {
+                setDetailId(null);
+                if (item.tab !== 'create') resetForm();
+                setTab(item.tab);
+              }}
             >
               <span className="ico">{item.icon}</span>
               {item.label}
@@ -156,7 +200,13 @@ export function AdminView({
 
       <main className="adminMain">
         <div className="topline">
-          <h1>{titleFor(tab)}</h1>
+          <h1>
+            {tab === 'create' && editingId != null
+              ? 'Edit Album'
+              : tab === 'albums' && detailAlbum
+                ? detailAlbum.name
+                : titleFor(tab)}
+          </h1>
           <button className="btn" onClick={openCreate}>
             ＋ New Album
           </button>
@@ -185,34 +235,31 @@ export function AdminView({
           <h2 className="sectionTitle">Recent Albums</h2>
           <div className="albumGrid">
             {albums.slice(0, 5).map((a) => (
-              <article className="panel albumCard" key={a.id}>
+              <article
+                className="panel albumCard clickable"
+                key={a.id}
+                onClick={() => {
+                  setDetailId(a.id);
+                  setTab('albums');
+                }}
+              >
                 <img src={a.cover} alt="" />
                 <div className="albumInfo">
-                  <h3>{a.name}</h3>
+                  <div className="albumCardHead">
+                    <h3>{a.name}</h3>
+                    <span className={'statusPill ' + (a.locked ? 'off' : 'on')}>
+                      {a.locked ? 'Disabled' : 'Active'}
+                    </span>
+                  </div>
                   <p>{a.subtitle}</p>
                   <div className="albumMeta">
-                    {a.photos.toLocaleString()} photos ·{' '}
-                    {a.driveFolderId ? 'Drive' : 'Demo'} · {a.status}
-                  </div>
-                  <div className="cardActions">
-                    <button
-                      className="btn small"
-                      onClick={() => onOpenClientGate(a.id)}
-                    >
-                      Client portal ↗
-                    </button>
-                    <button
-                      className="btn small outline"
-                      onClick={() => exportCSV(a, 'all')}
-                    >
-                      Export CSV
-                    </button>
-                    <button
-                      className="btn small outline"
-                      onClick={() => setManageId(a.id)}
-                    >
-                      Manage
-                    </button>
+                    {a.photos ? a.photos.toLocaleString() + ' photos' : 'Drive album'}
+                    {' · '}
+                    {a.events?.length
+                      ? a.events.length + ' events'
+                      : a.driveFolderId
+                        ? 'Drive'
+                        : 'Demo'}
                   </div>
                 </div>
               </article>
@@ -222,92 +269,92 @@ export function AdminView({
 
         {/* Albums */}
         <div className={'adminContent' + (tab === 'albums' ? ' active' : '')}>
-          <div className="toolbar">
-            <input
-              placeholder="Search albums…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                padding: '11px 13px',
-                border: '1px solid #ddd',
-                borderRadius: 7,
-                minWidth: 220,
+          {detailAlbum ? (
+            <AlbumDetail
+              album={detailAlbum}
+              onBack={() => setDetailId(null)}
+              onView={() => onOpenClientGate(detailAlbum.id)}
+              onSync={() => {
+                onUpdateAlbum(detailAlbum.id, {
+                  lastSynced: new Date().toISOString(),
+                });
+                showToast(
+                  detailAlbum.driveFolderId
+                    ? 'Synced with Google Drive.'
+                    : 'Nothing to sync — this album uses demo photos.',
+                );
               }}
+              onEdit={() => startEdit(detailAlbum)}
+              onToggleDisabled={() => {
+                const nowLocked = !detailAlbum.locked;
+                onUpdateAlbum(detailAlbum.id, {
+                  locked: nowLocked,
+                  status: nowLocked ? 'Disabled' : 'In progress',
+                });
+                showToast(nowLocked ? 'Album disabled.' : 'Album enabled.');
+              }}
+              onDelete={() => setDeletingId(detailAlbum.id)}
+              onCopyLink={copyPrivateLink}
+              onExport={exportCSV}
+              showToast={showToast}
             />
-            <button className="btn goldbtn" onClick={openCreate}>
-              ＋ Create album
-            </button>
-          </div>
-          <div className="tableWrap">
-            <table className="adminTable">
-              <thead>
-                <tr>
-                  <th>CLIENT / ALBUM</th>
-                  <th>PHOTOS</th>
-                  <th>SOURCE</th>
-                  <th>BRIDE</th>
-                  <th>GROOM</th>
-                  <th>BOTH</th>
-                  <th>STATUS</th>
-                  <th>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAlbums.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="empty">
-                      No albums found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAlbums.map((a) => {
-                    const c = selectionCounts(a);
-                    return (
-                      <tr key={a.id}>
-                        <td>
-                          <b>{a.name}</b>
-                          <br />
-                          <span className="muted">{a.subtitle}</span>
-                        </td>
-                        <td>{a.photos ? a.photos.toLocaleString() : '—'}</td>
-                        <td>{a.driveFolderId ? 'Drive' : 'Demo'}</td>
-                        <td>{c.bride}</td>
-                        <td>{c.groom}</td>
-                        <td>{c.both}</td>
-                        <td>
-                          <span className={'status ' + (a.locked ? '' : 'pending')}>
-                            {a.locked ? 'Locked' : 'Active'}
+          ) : (
+            <>
+              <input
+                className="albumSearch"
+                placeholder="Search by client or title…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {filteredAlbums.length === 0 ? (
+                <div className="empty">No albums found.</div>
+              ) : (
+                <div className="albumGrid">
+                  {filteredAlbums.map((a) => (
+                    <article
+                      className="panel albumCard clickable"
+                      key={a.id}
+                      onClick={() => setDetailId(a.id)}
+                    >
+                      <img src={a.cover} alt="" />
+                      <div className="albumInfo">
+                        <div className="albumCardHead">
+                          <h3>{a.name}</h3>
+                          <span
+                            className={'statusPill ' + (a.locked ? 'off' : 'on')}
+                          >
+                            {a.locked ? 'Disabled' : 'Active'}
                           </span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn small"
-                            onClick={() => onOpenClientGate(a.id)}
-                          >
-                            Open
-                          </button>{' '}
-                          <button
-                            className="btn small outline"
-                            onClick={() => setManageId(a.id)}
-                          >
-                            Manage
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                        <p>{a.subtitle}</p>
+                        <div className="albumMeta">
+                          {a.photos ? a.photos.toLocaleString() + ' photos' : 'Drive album'}
+                          {' · '}
+                          {a.events?.length
+                            ? a.events.length + ' events'
+                            : a.driveFolderId
+                              ? 'Drive'
+                              : 'Demo'}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Create */}
         <div className={'adminContent' + (tab === 'create' ? ' active' : '')}>
           <div className="panel formCard" style={{ maxWidth: 760 }}>
-            <h2 className="sectionTitle">Create a client album</h2>
+            <h2 className="sectionTitle">
+              {editingId != null ? 'Edit album' : 'Create a client album'}
+            </h2>
             <p className="muted">
-              Create a private client portal with its own password and unique link.
+              {editingId != null
+                ? 'Update this album’s details, password or Drive folder.'
+                : 'Create a private client portal with its own password and unique link.'}
             </p>
             <form className="createForm" onSubmit={handleCreate}>
               <div className="field">
@@ -363,7 +410,25 @@ export function AdminView({
                   onChange={(e) => setNewCover(e.target.value)}
                 />
               </div>
-              <button className="btn goldbtn">Create private album</button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn goldbtn">
+                  {editingId != null ? 'Save changes' : 'Create private album'}
+                </button>
+                {editingId != null && (
+                  <button
+                    type="button"
+                    className="btn outline"
+                    onClick={() => {
+                      const id = editingId;
+                      resetForm();
+                      setTab('albums');
+                      setDetailId(id);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>
@@ -447,111 +512,286 @@ export function AdminView({
         </div>
       </main>
 
-      {manageAlbum && (
-        <ManageModal
-          album={manageAlbum}
-          onClose={() => setManageId(null)}
-          onCopyLink={copyPrivateLink}
-          onExport={exportCSV}
-          onPreview={(id) => {
-            setManageId(null);
-            onOpenClientGate(id);
+      {deletingAlbum && (
+        <div
+          className="modalBack"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDeletingId(null);
           }}
-        />
+        >
+          <div className="modal" style={{ maxWidth: 440 }}>
+            <div className="modalHead">
+              <h2>Delete album?</h2>
+              <button className="closeBtn" onClick={() => setDeletingId(null)}>
+                ×
+              </button>
+            </div>
+            <p>
+              This permanently removes <b>{deletingAlbum.name}</b> and its
+              selections. This cannot be undone.
+            </p>
+            <div
+              style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}
+            >
+              <button className="btn outline" onClick={() => setDeletingId(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn danger"
+                onClick={() => {
+                  const name = deletingAlbum.name;
+                  onDeleteAlbum(deletingAlbum.id);
+                  setDeletingId(null);
+                  setDetailId(null);
+                  showToast(`Deleted “${name}”.`);
+                }}
+              >
+                Delete album
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
 }
 
-interface ManageModalProps {
+interface AlbumDetailProps {
   album: Album;
-  onClose: () => void;
+  onBack: () => void;
+  onView: () => void;
+  onSync: () => void;
+  onEdit: () => void;
+  onToggleDisabled: () => void;
+  onDelete: () => void;
   onCopyLink: (link: string) => void;
   onExport: (album: Album, type: 'all' | SelectionType) => void;
-  onPreview: (id: number) => void;
+  showToast: (msg: string) => void;
 }
 
-function ManageModal({
+function AlbumDetail({
   album,
-  onClose,
+  onBack,
+  onView,
+  onSync,
+  onEdit,
+  onToggleDisabled,
+  onDelete,
   onCopyLink,
   onExport,
-  onPreview,
-}: ManageModalProps) {
-  const link = `${location.href.split('#')[0]}#client-${album.id}`;
+  showToast,
+}: AlbumDetailProps) {
+  const shareLink = `${location.href.split('#')[0]}#client-${album.id}`;
+  const counts = selectionCounts(album);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(shareLink)}`;
+
+  const eventsLabel = album.events?.length
+    ? String(album.events.length)
+    : album.driveFolderId
+      ? 'Drive'
+      : '—';
+
+  const lastSynced = album.lastSynced
+    ? new Date(album.lastSynced).toLocaleString()
+    : 'Never';
+
+  function shareWhatsApp() {
+    const text = `View the “${album.name}” photo album: ${shareLink}`;
+    window.open(
+      'https://wa.me/?text=' + encodeURIComponent(text),
+      '_blank',
+      'noopener',
+    );
+  }
+
   return (
-    <div
-      className="modalBack"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="modal">
-        <div className="modalHead">
-          <h2>Manage client album</h2>
-          <button className="closeBtn" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <p>
-          <b>{album.name}</b>
-        </p>
-        <p className="muted tiny">Private client link</p>
-        <input
-          readOnly
-          value={link}
-          style={{
-            width: '100%',
-            padding: 11,
-            border: '1px solid #ddd',
-            borderRadius: 6,
-          }}
-        />
-        <div className="cardActions">
-          <button className="btn small" onClick={() => onCopyLink(link)}>
-            Copy private link
-          </button>
-          <button
-            className="btn small outline"
-            onClick={() => onExport(album, 'bride')}
-          >
-            Download Bride CSV
-          </button>
-          <button
-            className="btn small outline"
-            onClick={() => onExport(album, 'groom')}
-          >
-            Download Groom CSV
-          </button>
-          <button
-            className="btn small outline"
-            onClick={() => onExport(album, 'both')}
-          >
-            Download Both CSV
-          </button>
-        </div>
-        <div className="field">
-          <label>Client password</label>
-          <input readOnly value={album.password} />
-        </div>
-        <div className="field">
-          <label>Google Drive folder (photos)</label>
-          <input
-            readOnly
-            value={album.driveLink || '— using bundled demo photos —'}
-          />
-        </div>
-        <div className="field">
-          <label>Album status</label>
-          <div>
-            {album.locked
-              ? 'Locked after final submission'
-              : 'Open for selections'}
+    <div className="albumDetail">
+      <button className="backLink" onClick={onBack}>
+        ‹ Back to albums
+      </button>
+
+      <div className="detailGrid">
+        {/* Left: album summary + actions */}
+        <div className="panel detailMain">
+          <img className="detailCover" src={album.cover} alt="" />
+          <div className="detailBody">
+            <div className="detailTitleRow">
+              <div>
+                <h2 className="detailName">{album.name}</h2>
+                <p className="detailSubtitle">{album.subtitle}</p>
+              </div>
+              <span className={'statusPill ' + (album.locked ? 'off' : 'on')}>
+                {album.locked ? 'Disabled' : 'Active'}
+              </span>
+            </div>
+
+            <div className="detailStats">
+              <div>
+                <div className="detailStatLabel">PHOTOS</div>
+                <div className="detailStatValue">
+                  {album.photos ? album.photos.toLocaleString() : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="detailStatLabel">EVENTS</div>
+                <div className="detailStatValue">{eventsLabel}</div>
+              </div>
+              <div>
+                <div className="detailStatLabel">FILM</div>
+                <div className="detailStatValue">—</div>
+              </div>
+              <div>
+                <div className="detailStatLabel">DRIVE</div>
+                <div className="detailStatValue">
+                  {album.driveFolderId ? 'Connected' : 'Not linked'}
+                </div>
+              </div>
+            </div>
+
+            <div className="muted tiny" style={{ marginBottom: 18 }}>
+              Last synced: {lastSynced}
+            </div>
+
+            <div className="detailActions">
+              <button className="btn" onClick={onView}>
+                View Album
+              </button>
+              <button className="btn outline" onClick={onSync}>
+                Sync Now
+              </button>
+              <button className="btn outline" onClick={onEdit}>
+                Edit
+              </button>
+              <button className="btn outline" onClick={onToggleDisabled}>
+                {album.locked ? 'Enable' : 'Disable'}
+              </button>
+              <button className="btn outline detailDelete" onClick={onDelete}>
+                Delete
+              </button>
+            </div>
+
+            <div className="detailExport">
+              <div className="formSectionLabel" style={{ marginBottom: 10 }}>
+                EXPORT SELECTIONS
+              </div>
+              <div className="detailExportRow">
+                <span className="countPill light">
+                  Bride <b>{counts.bride}</b>
+                </span>
+                <span className="countPill light">
+                  Groom <b>{counts.groom}</b>
+                </span>
+                <span className="countPill light">
+                  Both <b>{counts.both}</b>
+                </span>
+              </div>
+              <div className="detailExportRow">
+                <button
+                  className="btn small outline"
+                  onClick={() => onExport(album, 'bride')}
+                >
+                  Bride CSV
+                </button>
+                <button
+                  className="btn small outline"
+                  onClick={() => onExport(album, 'groom')}
+                >
+                  Groom CSV
+                </button>
+                <button
+                  className="btn small outline"
+                  onClick={() => onExport(album, 'both')}
+                >
+                  Both CSV
+                </button>
+                <button
+                  className="btn small outline"
+                  onClick={() => onExport(album, 'all')}
+                >
+                  All CSV
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <button className="btn outline" onClick={() => onPreview(album.id)}>
-          Preview client portal
-        </button>
+
+        {/* Right: share / analytics / enquiries / comments */}
+        <div className="detailSide">
+          <div className="panel detailCard">
+            <h3 className="detailCardTitle">🎉 Album Ready to Share</h3>
+            <div className="formSectionLabel">SHARE LINK</div>
+            <div className="shareRow">
+              <input readOnly value={shareLink} />
+              <button
+                className="btn small"
+                onClick={() => onCopyLink(shareLink)}
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              className="btn"
+              style={{ width: '100%', marginTop: 12 }}
+              onClick={shareWhatsApp}
+            >
+              Share on WhatsApp
+            </button>
+            <button
+              className="btn outline"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={onView}
+            >
+              Open Album
+            </button>
+            <div className="formSectionLabel" style={{ marginTop: 18 }}>
+              QR CODE
+            </div>
+            <img
+              className="detailQr"
+              src={qrSrc}
+              alt={'QR code for ' + album.name}
+              width={160}
+              height={160}
+              onError={() =>
+                showToast('QR preview needs an internet connection.')
+              }
+            />
+          </div>
+
+          <div className="panel detailCard">
+            <h3 className="detailCardTitle">Analytics</h3>
+            <div className="analyticsGrid">
+              <div>
+                <div className="detailStatLabel">TOTAL VIEWS</div>
+                <div className="detailStatValue">{album.views}</div>
+              </div>
+              <div>
+                <div className="detailStatLabel">UNIQUE VISITORS</div>
+                <div className="detailStatValue">{album.views}</div>
+              </div>
+              <div>
+                <div className="detailStatLabel">PHOTOS VIEWED</div>
+                <div className="detailStatValue">
+                  {counts.bride + counts.groom + counts.both}
+                </div>
+              </div>
+              <div>
+                <div className="detailStatLabel">DOWNLOADS</div>
+                <div className="detailStatValue">0</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel detailCard">
+            <h3 className="detailCardTitle">Enquiries (0)</h3>
+            <p className="muted tiny">No enquiries yet.</p>
+          </div>
+
+          <div className="panel detailCard">
+            <h3 className="detailCardTitle">Comments (0)</h3>
+            <p className="muted tiny">No comments yet.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
