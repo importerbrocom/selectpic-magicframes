@@ -10,12 +10,44 @@ import { ClientView } from './studio/ClientView';
 
 const ADMIN_EMAIL = 'admin@magicframes.test';
 const ADMIN_PASSWORD = 'password';
+const STORAGE_KEY = 'magicframes.albums.v1';
+
+/**
+ * Load albums from localStorage, falling back to the seed data. Any seed album
+ * that isn't already stored is appended, so the built-in demo albums always
+ * exist alongside ones the admin created.
+ */
+function loadAlbums(): Album[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return initialAlbums;
+    const stored = JSON.parse(raw) as Album[];
+    if (!Array.isArray(stored) || stored.length === 0) return initialAlbums;
+    const ids = new Set(stored.map((a) => a.id));
+    const missingSeeds = initialAlbums.filter((a) => !ids.has(a.id));
+    return [...stored, ...missingSeeds];
+  } catch {
+    return initialAlbums;
+  }
+}
 
 export default function App() {
-  const [albums, setAlbums] = useState<Album[]>(initialAlbums);
+  const [albums, setAlbums] = useState<Album[]>(loadAlbums);
   const [screen, setScreen] = useState<Screen>('login');
-  const [activeAlbumId, setActiveAlbumId] = useState<number>(initialAlbums[0].id);
+  const [activeAlbumId, setActiveAlbumId] = useState<number>(
+    () => loadAlbums()[0]?.id ?? initialAlbums[0].id,
+  );
   const { message: toast, showToast } = useToast();
+
+  // Persist albums (passwords, selections, lock state) so created albums and
+  // client selections survive reloads and direct #client-<id> links.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(albums));
+    } catch {
+      // Storage may be unavailable (private mode / quota); ignore.
+    }
+  }, [albums]);
 
   const activeAlbum =
     albums.find((a) => a.id === activeAlbumId) ?? albums[0] ?? null;

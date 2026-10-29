@@ -19,7 +19,9 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (password === album.password) {
+    // Compare whitespace-trimmed so stray spaces from typing/pasting on either
+    // side don't cause a false mismatch.
+    if (password.trim() === (album.password ?? '').trim()) {
       setError('');
       onUnlock();
     } else {

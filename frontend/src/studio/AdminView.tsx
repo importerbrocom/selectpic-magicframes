@@ -76,7 +76,7 @@ export function AdminView({
     onCreateAlbum({
       name,
       subtitle: newSubtitle.trim() || 'A Story in Every Frame',
-      password: newPassword,
+      password: newPassword.trim(),
       events: events.length ? events : ['Wedding'],
       photos: photos.length,
       cover: newCover.trim() || photos[0].url,
