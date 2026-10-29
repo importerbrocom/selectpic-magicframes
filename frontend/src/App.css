@@ -1727,7 +1727,7 @@ a.clientBrand {
 }
 #clientView .clientBrand .brandName {
   font-family: 'Montserrat', sans-serif;
-  font-weight: 100;
+  font-weight: 300;
   color: var(--accent);
   letter-spacing: 0.025em;
   line-height: 1.3;
