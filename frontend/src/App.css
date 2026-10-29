@@ -1713,7 +1713,7 @@ a.clientBrand {
   gap: 8px;
   width: 100%;
   margin: 0;
-  padding: 6px 16px;
+  padding: 10px 16px;
 }
 #clientView .clientBrand {
   display: flex;
@@ -1722,7 +1722,7 @@ a.clientBrand {
   min-width: 0;
 }
 #clientView .headerLogo {
-  height: 30px;
+  height: 38px;
   width: auto;
 }
 #clientView .clientBrand .brandName {
@@ -1754,10 +1754,10 @@ a.clientBrand {
 @media (min-width: 640px) {
   #clientView .clientHeader {
     gap: 12px;
-    padding: 8px 24px;
+    padding: 12px 24px;
   }
   #clientView .headerLogo {
-    height: 42px;
+    height: 52px;
   }
   #clientView .clientBrand .brandName {
     font-size: 1.25rem;
@@ -1773,7 +1773,7 @@ a.clientBrand {
 }
 @media (min-width: 1024px) {
   #clientView .headerLogo {
-    height: 48px;
+    height: 60px;
   }
   #clientView .clientBrand .brandName {
     font-size: 1.5rem;
