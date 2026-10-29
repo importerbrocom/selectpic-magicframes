@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getApiKey,
   listImages,
@@ -59,16 +59,32 @@ export function useDriveGallery(album: Album): GalleryState {
   // Demo albums: static folders, no network.
   const demoFolderList = useMemo(
     () => (isDemo ? demoFolders(album) : []),
-    [isDemo, album],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isDemo, album.events?.join('|')],
   );
+
+  // A stable identity for the *gallery structure* of this album. Only when
+  // this changes (a genuinely different album / folder) do we rebuild the
+  // tabs and reset the active folder — NOT when the client marks a photo
+  // (which replaces the album object but leaves its structure untouched).
+  const galleryKey = isDemo
+    ? 'demo:' + (album.events?.join('|') ?? '')
+    : 'drive:' + album.driveFolderId;
+  const resolvedKeyRef = useRef<string | null>(null);
 
   // Resolve folders (Drive sub-folders, or the parent as a single folder).
   useEffect(() => {
     let cancelled = false;
 
+    // Already resolved for this exact gallery — don't rebuild or reset the
+    // active folder just because an unrelated album field changed.
+    if (resolvedKeyRef.current === galleryKey) return;
+    resolvedKeyRef.current = galleryKey;
+
     if (isDemo) {
       setFolders(demoFolderList);
       setActiveFolderId(demoFolderList[0]?.id ?? '');
+      setCache({});
       setError(null);
       return;
     }
@@ -108,7 +124,7 @@ export function useDriveGallery(album: Album): GalleryState {
     return () => {
       cancelled = true;
     };
-  }, [isDemo, apiKey, album.driveFolderId, demoFolderList]);
+  }, [galleryKey, isDemo, apiKey, album.driveFolderId, demoFolderList]);
 
   // Load the active folder's images (cached per folder id).
   useEffect(() => {
