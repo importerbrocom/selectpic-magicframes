@@ -203,6 +203,14 @@ button:disabled {
   padding: 14px;
   margin-top: 26px;
   color: #252c3a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.googleBtn svg {
+  flex-shrink: 0;
 }
 .demo {
   color: #969eae;
