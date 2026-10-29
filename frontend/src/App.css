@@ -1712,9 +1712,8 @@ a.clientBrand {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  max-width: 1152px;
-  margin: 0 auto;
-  padding: 10px 12px;
+  margin: 0;
+  padding: 6px 16px;
 }
 #clientView .clientBrand {
   display: flex;
@@ -1723,7 +1722,7 @@ a.clientBrand {
   min-width: 0;
 }
 #clientView .headerLogo {
-  height: 40px;
+  height: 30px;
   width: auto;
 }
 #clientView .clientBrand .brandName {
@@ -1755,10 +1754,10 @@ a.clientBrand {
 @media (min-width: 640px) {
   #clientView .clientHeader {
     gap: 12px;
-    padding: 12px 16px;
+    padding: 8px 24px;
   }
   #clientView .headerLogo {
-    height: 64px;
+    height: 42px;
   }
   #clientView .clientBrand .brandName {
     font-size: 1.25rem;
@@ -1774,7 +1773,7 @@ a.clientBrand {
 }
 @media (min-width: 1024px) {
   #clientView .headerLogo {
-    height: 80px;
+    height: 48px;
   }
   #clientView .clientBrand .brandName {
     font-size: 1.5rem;
