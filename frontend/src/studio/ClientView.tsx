@@ -10,7 +10,6 @@ interface ClientViewProps {
   album: Album;
   onMark: (photoId: string, type: SelectionType) => void;
   onSubmit: () => void;
-  onExit: () => void;
   showToast: (msg: string) => void;
 }
 
@@ -30,7 +29,6 @@ export function ClientView({
   album,
   onMark,
   onSubmit,
-  onExit,
   showToast,
 }: ClientViewProps) {
   const gallery = useDriveGallery(album);
@@ -84,9 +82,6 @@ export function ClientView({
         </a>
         <div className="clientHeadRight">
           <SocialIcons />
-          <button className="btn outline small" onClick={onExit}>
-            Exit album
-          </button>
         </div>
       </header>
 

@@ -938,14 +938,8 @@ button:disabled {
   .clientHeader {
     padding: 13px 4%;
   }
-  .clientHeadRight .socials {
-    display: none;
-  }
   .clientBrand .brandMark {
     font-size: 22px;
-  }
-  .clientBrand .brandName {
-    font-size: 12px;
   }
   .clientHero {
     height: 230px;
@@ -1696,4 +1690,93 @@ a.clientBrand {
   width: 70px;
   height: auto;
   margin: 0 auto 12px;
+}
+
+/* =====================================================================
+   Client album header — akhila theme spec
+   ===================================================================== */
+#clientView {
+  --accent: #d9ad60;
+  --surface: #17130d;
+}
+#clientView .clientHeader {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #28251e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 10px 12px;
+}
+#clientView .clientBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#clientView .headerLogo {
+  height: 40px;
+  width: auto;
+}
+#clientView .clientBrand .brandName {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 100;
+  color: var(--accent);
+  letter-spacing: 0.025em;
+  line-height: 1;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#clientView .clientHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#clientView .clientHeadRight .social {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 50%;
+}
+
+@media (min-width: 640px) {
+  #clientView .clientHeader {
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  #clientView .headerLogo {
+    height: 64px;
+  }
+  #clientView .clientBrand .brandName {
+    font-size: 1.25rem;
+  }
+  #clientView .clientHeadRight {
+    gap: 8px;
+  }
+  #clientView .clientHeadRight .social {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
+@media (min-width: 1024px) {
+  #clientView .headerLogo {
+    height: 80px;
+  }
+  #clientView .clientBrand .brandName {
+    font-size: 1.5rem;
+  }
 }

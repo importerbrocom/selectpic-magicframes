@@ -236,7 +236,6 @@ export default function App() {
           album={activeAlbum}
           onMark={handleMark}
           onSubmit={handleSubmitSelections}
-          onExit={() => setScreen('clientGate')}
           showToast={showToast}
         />
       )}
