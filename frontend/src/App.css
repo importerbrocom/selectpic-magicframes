@@ -1403,3 +1403,17 @@ button:disabled {
   border-color: #ececea;
   border-radius: var(--card-radius);
 }
+
+/* Tighter admin spacing (modern theme) */
+#adminView[data-theme='modern'] .nav {
+  gap: 2px;
+}
+#adminView[data-theme='modern'] .nav button {
+  padding: 10px 14px;
+}
+#adminView[data-theme='modern'] .stats {
+  margin-bottom: 22px;
+}
+#adminView[data-theme='modern'] .sectionTitle {
+  margin-bottom: 14px;
+}
