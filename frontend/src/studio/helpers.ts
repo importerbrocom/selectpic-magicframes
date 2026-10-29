@@ -36,6 +36,33 @@ export function selectionStatus(album: Album): SelectionStatus {
   return { label: 'Awaiting selection', tone: 'idle' };
 }
 
+export interface SelectedPhoto {
+  id: string;
+  name: string;
+  thumbnail: string;
+  type: SelectionType;
+}
+
+/**
+ * Resolve an album's selected photos into displayable thumbnails. Demo photos
+ * are matched from the bundled set; Drive photos use a Drive thumbnail URL
+ * derived from the file id.
+ */
+export function selectedPhotos(album: Album): SelectedPhoto[] {
+  const selections: Selections = album.selections ?? {};
+  return Object.keys(selections).map((id) => {
+    const demo = demoById.get(id);
+    return {
+      id,
+      name: demo?.name ?? id,
+      thumbnail: demo
+        ? demo.url
+        : `https://drive.google.com/thumbnail?id=${id}&sz=w400`,
+      type: selections[id],
+    };
+  });
+}
+
 /**
  * Build and download a CSV of an album's selections for the given type.
  * Returns false (and downloads nothing) when there are no matching selections.

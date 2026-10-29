@@ -1561,3 +1561,77 @@ a.social {
   grid-template-columns: 1fr 1fr;
   gap: 18px 24px;
 }
+
+/* ---- Selected photos (admin album detail) ---- */
+.detailSelected {
+  margin-top: 18px;
+}
+.selectedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.filterButtons.light .filterBtn {
+  background: #fff;
+  color: #555;
+  border: 1px solid #e3e3e0;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.filterButtons.light .filterBtn.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.selectedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+.selectedCard {
+  margin: 0;
+  position: relative;
+  border: 1px solid #ececea;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #faf9f7;
+}
+.selectedCard img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: #eee;
+}
+.selectedCard figcaption {
+  font-size: 11px;
+  color: #777;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selTag {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #fff;
+}
+.selTag.bride {
+  background: #8d5b77;
+}
+.selTag.groom {
+  background: #365e75;
+}
+.selTag.both {
+  background: #b08b3e;
+  color: #15110b;
+}

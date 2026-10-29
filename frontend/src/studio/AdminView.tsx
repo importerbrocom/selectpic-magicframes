@@ -1,6 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
-import { downloadAlbumCSV, selectionCounts, selectionStatus } from './helpers';
+import {
+  downloadAlbumCSV,
+  selectedPhotos,
+  selectionCounts,
+  selectionStatus,
+} from './helpers';
 import { parseFolderId } from './drive';
 import { photos } from './data';
 import { StaffView } from './StaffView';
@@ -574,6 +579,12 @@ function AlbumDetail({
   const counts = selectionCounts(album);
   const totalSelected = counts.bride + counts.groom + counts.both;
   const status = selectionStatus(album);
+  const allSelected = selectedPhotos(album);
+  const [selFilter, setSelFilter] = useState<'all' | SelectionType>('all');
+  const shownSelected =
+    selFilter === 'all'
+      ? allSelected
+      : allSelected.filter((p) => p.type === selFilter);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(shareLink)}`;
 
   const eventsLabel = album.events?.length
@@ -693,6 +704,60 @@ function AlbumDetail({
               </div>
             </div>
           </div>
+
+          {/* Selected photos */}
+          <div className="panel detailCard detailSelected">
+            <div className="selectedHead">
+              <h3 className="detailCardTitle" style={{ margin: 0 }}>
+                Selected photos ({allSelected.length})
+              </h3>
+              {allSelected.length > 0 && (
+                <div className="filterButtons light">
+                  {(['all', 'bride', 'groom', 'both'] as const).map((f) => (
+                    <button
+                      key={f}
+                      className={
+                        'filterBtn' + (selFilter === f ? ' active' : '')
+                      }
+                      onClick={() => setSelFilter(f)}
+                    >
+                      {f === 'all'
+                        ? 'All'
+                        : f[0].toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {allSelected.length === 0 ? (
+              <p className="muted tiny" style={{ marginTop: 12 }}>
+                The client hasn’t selected any photos yet. Open “Preview as
+                client” to try it.
+              </p>
+            ) : shownSelected.length === 0 ? (
+              <p className="muted tiny" style={{ marginTop: 12 }}>
+                No “{selFilter}” selections.
+              </p>
+            ) : (
+              <div className="selectedGrid">
+                {shownSelected.map((p) => (
+                  <figure className="selectedCard" key={p.id}>
+                    <img
+                      src={p.thumbnail}
+                      alt={p.name}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span className={'selTag ' + p.type}>
+                      {p.type.toUpperCase()}
+                    </span>
+                    <figcaption title={p.name}>{p.name}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: selection link + selection progress */}
@@ -708,6 +773,18 @@ function AlbumDetail({
               <button
                 className="btn small"
                 onClick={() => onCopyLink(shareLink)}
+              >
+                Copy
+              </button>
+            </div>
+            <div className="formSectionLabel" style={{ marginTop: 14 }}>
+              ALBUM PASSWORD
+            </div>
+            <div className="shareRow">
+              <input readOnly value={album.password} />
+              <button
+                className="btn small"
+                onClick={() => onCopyLink(album.password)}
               >
                 Copy
               </button>
