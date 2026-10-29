@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './App.css';
 import { initialAlbums } from './studio/data';
 import type {
@@ -88,6 +88,13 @@ export default function App() {
   const activeAlbum =
     albums.find((a) => a.id === activeAlbumId) ?? albums[0] ?? null;
 
+  // Keep the latest albums in a ref so the hash handler can read them without
+  // being a dependency (otherwise unrelated album updates — e.g. bumping the
+  // view count on unlock — would re-run the effect and bounce the user back
+  // to the gate).
+  const albumsRef = useRef(albums);
+  albumsRef.current = albums;
+
   const openClientGate = useCallback((id: number) => {
     setActiveAlbumId(id);
     setScreen('clientGate');
@@ -96,19 +103,20 @@ export default function App() {
     }
   }, []);
 
-  // Deep-link support: #client-<id> jumps straight to that album's gate.
+  // Deep-link support: #client-<id> jumps to that album's gate. Runs once on
+  // mount and only in response to real hashchange events.
   useEffect(() => {
     function fromHash() {
       const match = location.hash.match(/^#client-(\d+)$/);
       if (match) {
         const id = Number(match[1]);
-        if (albums.some((a) => a.id === id)) openClientGate(id);
+        if (albumsRef.current.some((a) => a.id === id)) openClientGate(id);
       }
     }
     fromHash();
     window.addEventListener('hashchange', fromHash);
     return () => window.removeEventListener('hashchange', fromHash);
-  }, [albums, openClientGate]);
+  }, [openClientGate]);
 
   function handleLogin(email: string, password: string) {
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
