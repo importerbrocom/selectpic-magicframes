@@ -1839,3 +1839,34 @@ a.clientBrand {
 .detailCover.coverPlaceholder {
   height: 300px;
 }
+
+/* Selected-photo cards are now links that open the full image */
+a.selectedCard {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+a.selectedCard .viewHint {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  background: #080908cc;
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+a.selectedCard:hover .viewHint {
+  opacity: 1;
+}
+a.selectedCard figcaption {
+  font-size: 11px;
+  color: #777;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

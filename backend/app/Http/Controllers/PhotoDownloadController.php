@@ -38,6 +38,10 @@ class PhotoDownloadController extends Controller
 
         DrivePublicDownloader::assertZipSupport();
 
+        // Large galleries take a while to fetch + zip; don't let PHP abort.
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
         $albumSlug = $this->slug($data['album'] ?? 'album');
         $typeSlug = $this->slug($data['type'] ?? 'selected');
         $zipName = "{$albumSlug}_{$typeSlug}_photos.zip";
@@ -74,7 +78,8 @@ class PhotoDownloadController extends Controller
             if ($bytes === null) {
                 continue; // skip unreachable files, keep going
             }
-            $name = $f['file_name'] ?? ($f['file_id'] . '.jpg');
+            $base = $f['file_name'] ?? $f['file_id'];
+            $name = $this->withExtension($base, $bytes);
             $name = $this->uniqueName($name, $i, $used);
             $zip->addFromString($name, $bytes);
             $added++;
@@ -94,6 +99,42 @@ class PhotoDownloadController extends Controller
         return response()
             ->download($tmp, $zipName, ['Content-Type' => 'application/zip'])
             ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Ensure the filename ends in a real image extension. If it already has a
+     * common image extension, keep it; otherwise detect the type from the
+     * bytes (magic numbers) and append the right one so files preview on all
+     * operating systems.
+     */
+    private function withExtension(string $name, string $bytes): string
+    {
+        if (preg_match('/\.(jpe?g|png|webp|gif|heic|tiff?|bmp)$/i', $name)) {
+            return $name;
+        }
+        $ext = $this->detectExtension($bytes);
+        return $name . '.' . $ext;
+    }
+
+    private function detectExtension(string $bytes): string
+    {
+        $head = substr($bytes, 0, 12);
+        if (str_starts_with($head, "\xFF\xD8\xFF")) {
+            return 'jpg';
+        }
+        if (str_starts_with($head, "\x89PNG")) {
+            return 'png';
+        }
+        if (str_starts_with($head, 'GIF8')) {
+            return 'gif';
+        }
+        if (substr($head, 0, 4) === 'RIFF' && substr($head, 8, 4) === 'WEBP') {
+            return 'webp';
+        }
+        if (str_starts_with($head, 'BM')) {
+            return 'bmp';
+        }
+        return 'jpg'; // sensible default for wedding photos
     }
 
     private function slug(string $value): string

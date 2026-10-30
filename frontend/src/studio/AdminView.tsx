@@ -811,7 +811,18 @@ function AlbumDetail({
             ) : (
               <div className="selectedGrid">
                 {shownSelected.map((p) => (
-                  <figure className="selectedCard" key={p.id}>
+                  <a
+                    className="selectedCard"
+                    key={p.id}
+                    href={
+                      album.driveFolderId
+                        ? thumbUrl(p.id, 1600)
+                        : p.thumbnail
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={'View ' + p.name}
+                  >
                     <img
                       src={p.thumbnail}
                       alt={p.name}
@@ -821,8 +832,9 @@ function AlbumDetail({
                     <span className={'selTag ' + p.type}>
                       {p.type.toUpperCase()}
                     </span>
-                    <figcaption title={p.name}>{p.name}</figcaption>
-                  </figure>
+                    <span className="viewHint">⌕ View</span>
+                    <figcaption>{p.name}</figcaption>
+                  </a>
                 ))}
               </div>
             )}
