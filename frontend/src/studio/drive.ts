@@ -12,9 +12,10 @@ export interface DriveFolder {
 export interface DrivePhoto {
   id: string;
   name: string;
-  /** Best-effort viewable image URL. */
+  /** Large image URL for the zoom / cover view. */
   url: string;
-  thumbnail: string | null;
+  /** Grid thumbnail URL. */
+  thumbnail: string;
 }
 
 const API_BASE = 'https://www.googleapis.com/drive/v3/files';
@@ -45,12 +46,12 @@ export function parseFolderId(input: string): string {
   return '';
 }
 
-/** A direct-view URL that works for publicly shared Drive images. */
-function viewUrl(id: string): string {
-  return `https://drive.google.com/uc?export=view&id=${id}`;
-}
-
-/** A sized thumbnail URL that renders reliably for public files. */
+/**
+ * A sized thumbnail URL that renders reliably for public Drive files.
+ * (The old `uc?export=view` endpoint is rate-limited/deprecated and often
+ * fails, so we use the thumbnail endpoint at the requested width for every
+ * size — grid, cover and full-screen zoom.)
+ */
 export function thumbUrl(id: string, size = 1000): string {
   return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
 }
@@ -122,7 +123,9 @@ export async function listImages(
   return files.map((f) => ({
     id: f.id,
     name: f.name,
-    url: viewUrl(f.id),
-    thumbnail: f.thumbnailLink ?? thumbUrl(f.id),
+    // Large render for zoom/cover, medium for the grid. Both use the reliable
+    // thumbnail endpoint (works for "anyone with the link" files).
+    url: thumbUrl(f.id, 1600),
+    thumbnail: thumbUrl(f.id, 600),
   }));
 }

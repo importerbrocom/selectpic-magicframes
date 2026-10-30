@@ -160,7 +160,9 @@ export function AdminView({
       driveLink,
       driveFolderId,
       photos: driveFolderId ? 0 : photos.length,
-      cover: newCover.trim() || photos[0].url,
+      // Drive albums start with no cover so the first Drive photo auto-fills
+      // it; demo albums use a bundled cover.
+      cover: newCover.trim() || (driveFolderId ? '' : photos[0].url),
       status: 'In progress',
       views: 0,
       locked: false,
@@ -284,7 +286,11 @@ export function AdminView({
                   setTab('albums');
                 }}
               >
-                <img src={a.cover} alt="" />
+                <img
+                  src={a.cover || undefined}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                />
                 <div className="albumInfo">
                   <div className="albumCardHead">
                     <h3>{a.name}</h3>
@@ -336,6 +342,16 @@ export function AdminView({
               onDelete={() => setDeletingId(detailAlbum.id)}
               onCopyLink={copyPrivateLink}
               onExport={exportCSV}
+              onDriveResolved={({ photos, cover }) => {
+                const patch: Partial<Album> = {};
+                if (photos && photos !== detailAlbum.photos)
+                  patch.photos = photos;
+                // Only auto-set a cover if the album doesn't have a usable one.
+                if (cover && !detailAlbum.cover) patch.cover = cover;
+                if (Object.keys(patch).length) {
+                  onUpdateAlbum(detailAlbum.id, patch);
+                }
+              }}
               showToast={showToast}
             />
           ) : (
@@ -356,7 +372,11 @@ export function AdminView({
                       key={a.id}
                       onClick={() => setDetailId(a.id)}
                     >
-                      <img src={a.cover} alt="" />
+                      <img
+                        src={a.cover || undefined}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                      />
                       <div className="albumInfo">
                         <div className="albumCardHead">
                           <h3>{a.name}</h3>
@@ -560,6 +580,7 @@ interface AlbumDetailProps {
   onDelete: () => void;
   onCopyLink: (link: string) => void;
   onExport: (album: Album, type: 'all' | SelectionType) => void;
+  onDriveResolved: (info: { photos: number; cover: string | null }) => void;
   showToast: (msg: string) => void;
 }
 
@@ -573,6 +594,7 @@ function AlbumDetail({
   onDelete,
   onCopyLink,
   onExport,
+  onDriveResolved,
   showToast,
 }: AlbumDetailProps) {
   const shareLink = `${location.href.split('#')[0]}#client-${album.id}`;
@@ -606,7 +628,12 @@ function AlbumDetail({
       <div className="detailGrid">
         {/* Left: album summary + actions */}
         <div className="panel detailMain">
-          <img className="detailCover" src={album.cover} alt="" />
+          <img
+            className="detailCover"
+            src={album.cover || undefined}
+            alt=""
+            referrerPolicy="no-referrer"
+          />
           <div className="detailBody">
             <div className="detailTitleRow">
               <div>
@@ -643,7 +670,12 @@ function AlbumDetail({
               Last synced: {lastSynced}
             </div>
 
-            {album.driveFolderId && <DriveStatus folderId={album.driveFolderId} />}
+            {album.driveFolderId && (
+              <DriveStatus
+                folderId={album.driveFolderId}
+                onResolved={onDriveResolved}
+              />
+            )}
 
             <div className="detailActions">
               <button className="btn" onClick={onView}>
@@ -859,7 +891,13 @@ interface DriveStatusState {
  * folder's sub-folders and counts images, surfacing the exact Google error so
  * studio staff can see why photos aren't loading.
  */
-function DriveStatus({ folderId }: { folderId: string }) {
+function DriveStatus({
+  folderId,
+  onResolved,
+}: {
+  folderId: string;
+  onResolved?: (info: { photos: number; cover: string | null }) => void;
+}) {
   const [state, setState] = useState<DriveStatusState>({
     loading: true,
     error: null,
@@ -890,8 +928,10 @@ function DriveStatus({ folderId }: { folderId: string }) {
         // Count images in the parent itself plus each sub-folder.
         const targets = subs.length ? subs.map((s) => s.id) : [folderId];
         let total = 0;
+        let cover: string | null = null;
         for (const id of targets) {
           const imgs = await listImages(id, key);
+          if (!cover && imgs.length) cover = imgs[0].url;
           total += imgs.length;
         }
         if (!cancelled) {
@@ -901,6 +941,7 @@ function DriveStatus({ folderId }: { folderId: string }) {
             folders: subs.length,
             photos: total,
           });
+          onResolved?.({ photos: total, cover });
         }
       } catch (e) {
         if (!cancelled) {
@@ -917,6 +958,7 @@ function DriveStatus({ folderId }: { folderId: string }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folderId]);
 
   if (state.loading) {

@@ -1814,3 +1814,10 @@ a.clientBrand {
   font-size: 12px;
   opacity: 0.85;
 }
+
+/* Cover image placeholders (neutral bg while loading / if missing) */
+.albumCard img,
+.detailCover {
+  background: #ece9e3;
+  color: transparent;
+}
