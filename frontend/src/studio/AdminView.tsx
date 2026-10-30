@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
 import {
-  downloadAlbumCSV,
   selectedPhotos,
   selectionCounts,
   selectionStatus,
@@ -180,22 +179,6 @@ export function AdminView({
     showToast('Private album created. Unique link and password are ready.');
   }
 
-  function exportCSV(album: Album, type: 'all' | SelectionType) {
-    const ok = downloadAlbumCSV(album, type);
-    if (!ok) {
-      showToast(
-        type === 'all'
-          ? 'No photos marked yet.'
-          : 'No photos marked for ' + type.toUpperCase() + ' yet.',
-      );
-    } else {
-      showToast(
-        (type === 'all' ? 'ALL' : type.toUpperCase()) +
-          ' selection CSV downloaded',
-      );
-    }
-  }
-
   function copyPrivateLink(link: string) {
     const write = navigator.clipboard?.writeText(link);
     if (write) {
@@ -348,7 +331,6 @@ export function AdminView({
               }}
               onDelete={() => setDeletingId(detailAlbum.id)}
               onCopyLink={copyPrivateLink}
-              onExport={exportCSV}
               onDriveResolved={({ photos, cover }) => {
                 const patch: Partial<Album> = {};
                 if (photos && photos !== detailAlbum.photos)
@@ -591,7 +573,6 @@ interface AlbumDetailProps {
   onToggleDisabled: () => void;
   onDelete: () => void;
   onCopyLink: (link: string) => void;
-  onExport: (album: Album, type: 'all' | SelectionType) => void;
   onDriveResolved: (info: { photos: number; cover: string | null }) => void;
   showToast: (msg: string) => void;
 }
@@ -605,7 +586,6 @@ function AlbumDetail({
   onToggleDisabled,
   onDelete,
   onCopyLink,
-  onExport,
   onDriveResolved,
   showToast,
 }: AlbumDetailProps) {
@@ -746,101 +726,51 @@ function AlbumDetail({
 
             <div className="detailExport">
               <div className="formSectionLabel" style={{ marginBottom: 10 }}>
-                EXPORT SELECTED PHOTOS
+                DOWNLOAD SELECTED PHOTOS (ZIP)
               </div>
               <div className="detailExportRow">
-                <span className="countPill light">
-                  Bride <b>{counts.bride}</b>
-                </span>
-                <span className="countPill light">
-                  Groom <b>{counts.groom}</b>
-                </span>
-                <span className="countPill light">
-                  Both <b>{counts.both}</b>
-                </span>
+                <button
+                  className="btn small"
+                  disabled={!!downloading}
+                  onClick={() => downloadSelected('bride')}
+                >
+                  {downloading === 'bride'
+                    ? 'Zipping…'
+                    : `Bride (${counts.bride})`}
+                </button>
+                <button
+                  className="btn small"
+                  disabled={!!downloading}
+                  onClick={() => downloadSelected('groom')}
+                >
+                  {downloading === 'groom'
+                    ? 'Zipping…'
+                    : `Groom (${counts.groom})`}
+                </button>
+                <button
+                  className="btn small"
+                  disabled={!!downloading}
+                  onClick={() => downloadSelected('both')}
+                >
+                  {downloading === 'both'
+                    ? 'Zipping…'
+                    : `Both (${counts.both})`}
+                </button>
+                <button
+                  className="btn small"
+                  disabled={!!downloading}
+                  onClick={() => downloadSelected('all')}
+                >
+                  {downloading === 'all'
+                    ? 'Zipping…'
+                    : `All (${totalSelected})`}
+                </button>
               </div>
-
-              {album.driveFolderId && (
-                <>
-                  <div
-                    className="formSectionLabel"
-                    style={{ margin: '4px 0 8px' }}
-                  >
-                    DOWNLOAD PHOTOS
-                  </div>
-                  <div className="detailExportRow">
-                    <button
-                      className="btn small"
-                      disabled={!!downloading}
-                      onClick={() => downloadSelected('bride')}
-                    >
-                      {downloading === 'bride'
-                        ? 'Downloading…'
-                        : `Download Bride (${counts.bride})`}
-                    </button>
-                    <button
-                      className="btn small"
-                      disabled={!!downloading}
-                      onClick={() => downloadSelected('groom')}
-                    >
-                      {downloading === 'groom'
-                        ? 'Downloading…'
-                        : `Download Groom (${counts.groom})`}
-                    </button>
-                    <button
-                      className="btn small"
-                      disabled={!!downloading}
-                      onClick={() => downloadSelected('both')}
-                    >
-                      {downloading === 'both'
-                        ? 'Downloading…'
-                        : `Download Both (${counts.both})`}
-                    </button>
-                    <button
-                      className="btn small"
-                      disabled={!!downloading}
-                      onClick={() => downloadSelected('all')}
-                    >
-                      {downloading === 'all'
-                        ? 'Downloading…'
-                        : `Download All (${totalSelected})`}
-                    </button>
-                  </div>
-                </>
+              {!album.driveFolderId && (
+                <p className="muted tiny" style={{ marginTop: 10 }}>
+                  Photo download is available for Google Drive albums.
+                </p>
               )}
-
-              <div
-                className="formSectionLabel"
-                style={{ margin: '6px 0 8px' }}
-              >
-                EXPORT LIST (CSV)
-              </div>
-              <div className="detailExportRow">
-                <button
-                  className="btn small outline"
-                  onClick={() => onExport(album, 'bride')}
-                >
-                  Bride CSV
-                </button>
-                <button
-                  className="btn small outline"
-                  onClick={() => onExport(album, 'groom')}
-                >
-                  Groom CSV
-                </button>
-                <button
-                  className="btn small outline"
-                  onClick={() => onExport(album, 'both')}
-                >
-                  Both CSV
-                </button>
-                <button
-                  className="btn small outline"
-                  onClick={() => onExport(album, 'all')}
-                >
-                  All CSV
-                </button>
-              </div>
             </div>
           </div>
 
