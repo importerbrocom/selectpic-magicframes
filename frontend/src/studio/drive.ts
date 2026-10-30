@@ -148,6 +148,32 @@ export async function listSubFolders(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Direct-download URL for a public Drive file (original bytes). */
+export function downloadUrl(id: string): string {
+  return `https://drive.google.com/uc?export=download&id=${id}`;
+}
+
+/**
+ * Trigger downloads of the given Drive file IDs (original files). Browsers
+ * limit rapid multi-downloads, so each is spaced out slightly and opened via
+ * a hidden anchor. Returns how many were triggered.
+ */
+export async function downloadDriveFiles(ids: string[]): Promise<number> {
+  for (let i = 0; i < ids.length; i++) {
+    const a = document.createElement('a');
+    a.href = downloadUrl(ids[i]);
+    a.rel = 'noopener';
+    // No `download` attr: cross-origin wouldn't honour it anyway; Drive's
+    // export=download forces the file to save.
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Space out so the browser doesn't drop/queue-block the downloads.
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  return ids.length;
+}
+
 /** List image files inside a folder. */
 export async function listImages(
   folderId: string,

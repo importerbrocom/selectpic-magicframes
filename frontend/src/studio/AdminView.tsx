@@ -7,6 +7,7 @@ import {
   selectionStatus,
 } from './helpers';
 import {
+  downloadDriveFiles,
   getApiKey,
   listImages,
   listSubFolders,
@@ -614,10 +615,38 @@ function AlbumDetail({
   const status = selectionStatus(album);
   const allSelected = selectedPhotos(album);
   const [selFilter, setSelFilter] = useState<'all' | SelectionType>('all');
+  const [downloading, setDownloading] = useState<string | null>(null);
   const shownSelected =
     selFilter === 'all'
       ? allSelected
       : allSelected.filter((p) => p.type === selFilter);
+
+  async function downloadSelected(type: 'all' | SelectionType) {
+    if (!album.driveFolderId) {
+      showToast('Photo download works only for Google Drive albums.');
+      return;
+    }
+    const ids = allSelected
+      .filter((p) => (type === 'all' ? true : p.type === type))
+      .map((p) => p.id);
+    if (ids.length === 0) {
+      showToast(
+        type === 'all'
+          ? 'No photos selected yet.'
+          : `No ${type.toUpperCase()} photos selected.`,
+      );
+      return;
+    }
+    setDownloading(type);
+    showToast(
+      `Downloading ${ids.length} ${type === 'all' ? '' : type.toUpperCase() + ' '}photo${ids.length === 1 ? '' : 's'}… allow multiple downloads if prompted.`,
+    );
+    try {
+      await downloadDriveFiles(ids);
+    } finally {
+      setDownloading(null);
+    }
+  }
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(shareLink)}`;
 
   const eventsLabel = album.events?.length
@@ -726,6 +755,62 @@ function AlbumDetail({
                 <span className="countPill light">
                   Both <b>{counts.both}</b>
                 </span>
+              </div>
+
+              {album.driveFolderId && (
+                <>
+                  <div
+                    className="formSectionLabel"
+                    style={{ margin: '4px 0 8px' }}
+                  >
+                    DOWNLOAD PHOTOS
+                  </div>
+                  <div className="detailExportRow">
+                    <button
+                      className="btn small"
+                      disabled={!!downloading}
+                      onClick={() => downloadSelected('bride')}
+                    >
+                      {downloading === 'bride'
+                        ? 'Downloading…'
+                        : `Download Bride (${counts.bride})`}
+                    </button>
+                    <button
+                      className="btn small"
+                      disabled={!!downloading}
+                      onClick={() => downloadSelected('groom')}
+                    >
+                      {downloading === 'groom'
+                        ? 'Downloading…'
+                        : `Download Groom (${counts.groom})`}
+                    </button>
+                    <button
+                      className="btn small"
+                      disabled={!!downloading}
+                      onClick={() => downloadSelected('both')}
+                    >
+                      {downloading === 'both'
+                        ? 'Downloading…'
+                        : `Download Both (${counts.both})`}
+                    </button>
+                    <button
+                      className="btn small"
+                      disabled={!!downloading}
+                      onClick={() => downloadSelected('all')}
+                    >
+                      {downloading === 'all'
+                        ? 'Downloading…'
+                        : `Download All (${totalSelected})`}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <div
+                className="formSectionLabel"
+                style={{ margin: '6px 0 8px' }}
+              >
+                EXPORT LIST (CSV)
               </div>
               <div className="detailExportRow">
                 <button
