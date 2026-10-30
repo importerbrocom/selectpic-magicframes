@@ -1780,3 +1780,37 @@ a.clientBrand {
     font-size: 1.15rem;
   }
 }
+
+/* Drive connection diagnostic on album detail */
+.driveStatus {
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px 13px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  border: 1px solid transparent;
+}
+.driveStatus.checking {
+  background: #f3f4f6;
+  color: #555;
+}
+.driveStatus.ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #c7e6c9;
+}
+.driveStatus.warn {
+  background: #fff4df;
+  color: #8a5a12;
+  border-color: #f0dcae;
+}
+.driveStatus.bad {
+  background: #fdecea;
+  color: #b3261e;
+  border-color: #f3c4bf;
+}
+.driveHint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}

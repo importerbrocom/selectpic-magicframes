@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
 import {
   downloadAlbumCSV,
@@ -6,7 +6,7 @@ import {
   selectionCounts,
   selectionStatus,
 } from './helpers';
-import { parseFolderId } from './drive';
+import { getApiKey, listImages, listSubFolders, parseFolderId } from './drive';
 import { photos } from './data';
 import { StaffView } from './StaffView';
 import { ProfileView, loadProfile } from './ProfileView';
@@ -643,6 +643,8 @@ function AlbumDetail({
               Last synced: {lastSynced}
             </div>
 
+            {album.driveFolderId && <DriveStatus folderId={album.driveFolderId} />}
+
             <div className="detailActions">
               <button className="btn" onClick={onView}>
                 Preview selection page
@@ -841,6 +843,116 @@ function AlbumDetail({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface DriveStatusState {
+  loading: boolean;
+  error: string | null;
+  folders: number;
+  photos: number;
+}
+
+/**
+ * Live Google Drive diagnostic shown on the album detail page. Fetches the
+ * folder's sub-folders and counts images, surfacing the exact Google error so
+ * studio staff can see why photos aren't loading.
+ */
+function DriveStatus({ folderId }: { folderId: string }) {
+  const [state, setState] = useState<DriveStatusState>({
+    loading: true,
+    error: null,
+    folders: 0,
+    photos: 0,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const key = getApiKey();
+
+    if (!key) {
+      setState({
+        loading: false,
+        error:
+          'No API key in this build (VITE_GOOGLE_API_KEY). Rebuild after setting it in frontend/.env.',
+        folders: 0,
+        photos: 0,
+      });
+      return;
+    }
+
+    setState((s) => ({ ...s, loading: true, error: null }));
+
+    (async () => {
+      try {
+        const subs = await listSubFolders(folderId, key);
+        // Count images in the parent itself plus each sub-folder.
+        const targets = subs.length ? subs.map((s) => s.id) : [folderId];
+        let total = 0;
+        for (const id of targets) {
+          const imgs = await listImages(id, key);
+          total += imgs.length;
+        }
+        if (!cancelled) {
+          setState({
+            loading: false,
+            error: null,
+            folders: subs.length,
+            photos: total,
+          });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setState({
+            loading: false,
+            error: (e as Error).message,
+            folders: 0,
+            photos: 0,
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [folderId]);
+
+  if (state.loading) {
+    return (
+      <div className="driveStatus checking">Checking Google Drive…</div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="driveStatus bad">
+        <b>Drive error:</b> {state.error}
+        <div className="driveHint">
+          Check: the folder is shared “Anyone with the link”, the API key allows
+          this domain, and the Google Drive API is enabled.
+        </div>
+      </div>
+    );
+  }
+
+  if (state.photos === 0) {
+    return (
+      <div className="driveStatus warn">
+        Connected, but <b>0 photos</b> found. Make sure the folder (and its
+        sub-folders) are shared “Anyone with the link” and contain images.
+      </div>
+    );
+  }
+
+  return (
+    <div className="driveStatus ok">
+      ✓ {state.photos} photo{state.photos === 1 ? '' : 's'} found
+      {state.folders > 0
+        ? ` across ${state.folders} event folder${state.folders === 1 ? '' : 's'}`
+        : ' in the folder'}
+      .
     </div>
   );
 }
