@@ -64,12 +64,23 @@ function loadAlbums(): Album[] {
   }
 }
 
+/** Read a #client-<id> deep link from the URL at startup, if present. */
+function initialClientId(): number | null {
+  const match = location.hash.match(/^#client-(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
 export default function App() {
   const [albums, setAlbums] = useState<Album[]>(loadAlbums);
   const [staff, setStaff] = useState<StaffMember[]>(loadStaff);
-  const [screen, setScreen] = useState<Screen>('login');
+
+  // If the page was opened via a client share link, start DIRECTLY on that
+  // album's password gate — never flash the admin login.
+  const [screen, setScreen] = useState<Screen>(() =>
+    initialClientId() !== null ? 'clientGate' : 'login',
+  );
   const [activeAlbumId, setActiveAlbumId] = useState<number>(
-    () => loadAlbums()[0]?.id ?? initialAlbums[0].id,
+    () => initialClientId() ?? loadAlbums()[0]?.id ?? initialAlbums[0].id,
   );
   const { message: toast, showToast } = useToast();
 

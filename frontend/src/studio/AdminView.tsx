@@ -871,8 +871,25 @@ function AlbumDetail({
               </button>
             </div>
             <button
+              className="btn"
+              style={{ width: '100%', marginTop: 14 }}
+              onClick={() => {
+                const text =
+                  `Hi! Your "${album.name}" photo selection album is ready. ` +
+                  `Open this link to choose your photos:\n${shareLink}\n` +
+                  `Password: ${album.password}`;
+                window.open(
+                  'https://wa.me/?text=' + encodeURIComponent(text),
+                  '_blank',
+                  'noopener',
+                );
+              }}
+            >
+              Share on WhatsApp
+            </button>
+            <button
               className="btn outline"
-              style={{ width: '100%', marginTop: 12 }}
+              style={{ width: '100%', marginTop: 10 }}
               onClick={onView}
             >
               Preview as client
