@@ -22,11 +22,13 @@ class ImageSelectionController extends Controller
             'data' => [
                 'bride' => $selections->where('choice', 'bride')->values(),
                 'groom' => $selections->where('choice', 'groom')->values(),
+                'both' => $selections->where('choice', 'both')->values(),
             ],
             'meta' => [
                 'project_id' => $project->id,
                 'bride_count' => $selections->where('choice', 'bride')->count(),
                 'groom_count' => $selections->where('choice', 'groom')->count(),
+                'both_count' => $selections->where('choice', 'both')->count(),
             ],
         ]);
     }
@@ -44,7 +46,7 @@ class ImageSelectionController extends Controller
             'file_id' => ['required', 'string', 'max:255'],
             'file_name' => ['nullable', 'string', 'max:255'],
             'thumbnail_link' => ['nullable', 'string'],
-            'choice' => ['required', Rule::in(['bride', 'groom'])],
+            'choice' => ['required', Rule::in(['bride', 'groom', 'both'])],
         ]);
 
         $existing = $project->selections()

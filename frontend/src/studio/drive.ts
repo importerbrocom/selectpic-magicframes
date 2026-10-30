@@ -153,25 +153,60 @@ export function downloadUrl(id: string): string {
   return `https://drive.google.com/uc?export=download&id=${id}`;
 }
 
+const BACKEND_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
+    /\/$/,
+    '',
+  ) ?? '';
+
+export interface ZipFile {
+  file_id: string;
+  file_name?: string;
+}
+
 /**
- * Trigger downloads of the given Drive file IDs (original files). Browsers
- * limit rapid multi-downloads, so each is spaced out slightly and opened via
- * a hidden anchor. Returns how many were triggered.
+ * Ask the backend to build a single ZIP of the given Drive photos and save it.
+ * Requires VITE_API_BASE_URL to point at the Laravel API. Throws with a clear
+ * message if the backend isn't configured or the request fails.
  */
-export async function downloadDriveFiles(ids: string[]): Promise<number> {
-  for (let i = 0; i < ids.length; i++) {
-    const a = document.createElement('a');
-    a.href = downloadUrl(ids[i]);
-    a.rel = 'noopener';
-    // No `download` attr: cross-origin wouldn't honour it anyway; Drive's
-    // export=download forces the file to save.
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // Space out so the browser doesn't drop/queue-block the downloads.
-    await new Promise((r) => setTimeout(r, 700));
+export async function downloadSelectedZip(
+  album: string,
+  type: string,
+  files: ZipFile[],
+): Promise<void> {
+  if (!BACKEND_BASE) {
+    throw new Error(
+      'Downloads need the backend API (set VITE_API_BASE_URL in the build).',
+    );
   }
-  return ids.length;
+
+  const res = await fetch(`${BACKEND_BASE}/api/photos/zip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: '*/*' },
+    body: JSON.stringify({ album, type, files }),
+  });
+
+  if (!res.ok) {
+    let message = `Download failed (${res.status})`;
+    try {
+      const body = await res.json();
+      message = body.message ?? message;
+    } catch {
+      // keep default
+    }
+    throw new Error(message);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const slug = (s: string) => s.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
+  a.download = `${slug(album) || 'album'}_${slug(type) || 'selected'}_photos.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** List image files inside a folder. */

@@ -7,7 +7,7 @@ import {
   selectionStatus,
 } from './helpers';
 import {
-  downloadDriveFiles,
+  downloadSelectedZip,
   getApiKey,
   listImages,
   listSubFolders,
@@ -626,10 +626,10 @@ function AlbumDetail({
       showToast('Photo download works only for Google Drive albums.');
       return;
     }
-    const ids = allSelected
+    const files = allSelected
       .filter((p) => (type === 'all' ? true : p.type === type))
-      .map((p) => p.id);
-    if (ids.length === 0) {
+      .map((p) => ({ file_id: p.id, file_name: p.name }));
+    if (files.length === 0) {
       showToast(
         type === 'all'
           ? 'No photos selected yet.'
@@ -639,10 +639,13 @@ function AlbumDetail({
     }
     setDownloading(type);
     showToast(
-      `Downloading ${ids.length} ${type === 'all' ? '' : type.toUpperCase() + ' '}photo${ids.length === 1 ? '' : 's'}… allow multiple downloads if prompted.`,
+      `Preparing a ZIP of ${files.length} ${type === 'all' ? '' : type.toUpperCase() + ' '}photo${files.length === 1 ? '' : 's'}…`,
     );
     try {
-      await downloadDriveFiles(ids);
+      await downloadSelectedZip(album.name, type, files);
+      showToast('Download ready.');
+    } catch (e) {
+      showToast((e as Error).message);
     } finally {
       setDownloading(null);
     }

@@ -46,4 +46,14 @@ class Project extends Model
     {
         return $this->hasMany(ImageSelection::class)->where('choice', 'groom');
     }
+
+    /**
+     * Only the "both" selections for this project.
+     *
+     * @return HasMany<ImageSelection>
+     */
+    public function bothSelections(): HasMany
+    {
+        return $this->hasMany(ImageSelection::class)->where('choice', 'both');
+    }
 }
