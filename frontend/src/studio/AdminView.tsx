@@ -6,7 +6,13 @@ import {
   selectionCounts,
   selectionStatus,
 } from './helpers';
-import { getApiKey, listImages, listSubFolders, parseFolderId } from './drive';
+import {
+  getApiKey,
+  listImages,
+  listSubFolders,
+  parseFolderId,
+  thumbUrl,
+} from './drive';
 import { photos } from './data';
 import { StaffView } from './StaffView';
 import { ProfileView, loadProfile } from './ProfileView';
@@ -286,11 +292,11 @@ export function AdminView({
                   setTab('albums');
                 }}
               >
-                <img
-                  src={a.cover || undefined}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                />
+                {a.cover ? (
+                  <img src={a.cover} alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="coverPlaceholder cardCoverPlaceholder" />
+                )}
                 <div className="albumInfo">
                   <div className="albumCardHead">
                     <h3>{a.name}</h3>
@@ -346,8 +352,9 @@ export function AdminView({
                 const patch: Partial<Album> = {};
                 if (photos && photos !== detailAlbum.photos)
                   patch.photos = photos;
-                // Only auto-set a cover if the album doesn't have a usable one.
-                if (cover && !detailAlbum.cover) patch.cover = cover;
+                // For Drive albums, always keep the cover pointed at the first
+                // Drive photo (replaces any stale/empty value).
+                if (cover && cover !== detailAlbum.cover) patch.cover = cover;
                 if (Object.keys(patch).length) {
                   onUpdateAlbum(detailAlbum.id, patch);
                 }
@@ -372,11 +379,15 @@ export function AdminView({
                       key={a.id}
                       onClick={() => setDetailId(a.id)}
                     >
-                      <img
-                        src={a.cover || undefined}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                      />
+                      {a.cover ? (
+                        <img
+                          src={a.cover}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="coverPlaceholder cardCoverPlaceholder" />
+                      )}
                       <div className="albumInfo">
                         <div className="albumCardHead">
                           <h3>{a.name}</h3>
@@ -628,12 +639,18 @@ function AlbumDetail({
       <div className="detailGrid">
         {/* Left: album summary + actions */}
         <div className="panel detailMain">
-          <img
-            className="detailCover"
-            src={album.cover || undefined}
-            alt=""
-            referrerPolicy="no-referrer"
-          />
+          {album.cover ? (
+            <img
+              className="detailCover"
+              src={album.cover}
+              alt=""
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="detailCover coverPlaceholder">
+              {album.driveFolderId ? 'Loading cover…' : 'No cover image'}
+            </div>
+          )}
           <div className="detailBody">
             <div className="detailTitleRow">
               <div>
@@ -931,7 +948,8 @@ function DriveStatus({
         let cover: string | null = null;
         for (const id of targets) {
           const imgs = await listImages(id, key);
-          if (!cover && imgs.length) cover = imgs[0].url;
+          // Use a moderate cover size (more reliable than very large).
+          if (!cover && imgs.length) cover = thumbUrl(imgs[0].id, 800);
           total += imgs.length;
         }
         if (!cancelled) {

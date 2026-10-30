@@ -1821,3 +1821,18 @@ a.clientBrand {
   background: #ece9e3;
   color: transparent;
 }
+
+/* Cover placeholder (shown when no cover image yet) */
+.coverPlaceholder {
+  background: #ece9e3;
+  display: grid;
+  place-items: center;
+  color: #a7a29a;
+  font-size: 13px;
+}
+.cardCoverPlaceholder {
+  height: 180px;
+}
+.detailCover.coverPlaceholder {
+  height: 300px;
+}
