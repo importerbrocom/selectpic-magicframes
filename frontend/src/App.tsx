@@ -16,6 +16,7 @@ import { ClientView } from './studio/ClientView';
 const ADMIN_EMAIL = 'admin@magicframes.test';
 const ADMIN_PASSWORD = 'password';
 const STORAGE_KEY = 'magicframes.albums.v1';
+const SEEDED_KEY = 'magicframes.albums.seeded.v1';
 const STAFF_KEY = 'magicframes.staff.v1';
 
 const seedStaff: StaffMember[] = [
@@ -40,19 +41,24 @@ function loadStaff(): StaffMember[] {
 }
 
 /**
- * Load albums from localStorage, falling back to the seed data. Any seed album
- * that isn't already stored is appended, so the built-in demo albums always
- * exist alongside ones the admin created.
+ * Load albums from localStorage. The built-in demo albums are seeded only on
+ * the very first run (tracked by SEEDED_KEY); after that the saved list is the
+ * single source of truth, so deleted albums stay deleted across refreshes.
  */
 function loadAlbums(): Album[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialAlbums;
-    const stored = JSON.parse(raw) as Album[];
-    if (!Array.isArray(stored) || stored.length === 0) return initialAlbums;
-    const ids = new Set(stored.map((a) => a.id));
-    const missingSeeds = initialAlbums.filter((a) => !ids.has(a.id));
-    return [...stored, ...missingSeeds];
+    if (raw) {
+      const stored = JSON.parse(raw) as Album[];
+      if (Array.isArray(stored)) return stored;
+    }
+    // No stored list yet.
+    if (localStorage.getItem(SEEDED_KEY)) {
+      // Already seeded before and the user cleared everything — respect that.
+      return [];
+    }
+    localStorage.setItem(SEEDED_KEY, '1');
+    return initialAlbums;
   } catch {
     return initialAlbums;
   }
