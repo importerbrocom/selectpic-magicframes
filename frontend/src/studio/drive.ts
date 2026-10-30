@@ -16,6 +16,12 @@ export interface DrivePhoto {
   url: string;
   /** Grid thumbnail URL. */
   thumbnail: string;
+  /**
+   * Google's own hosted thumbnail base (lh3.googleusercontent.com, no size
+   * suffix) when available — higher quality than the generic thumbnail
+   * endpoint. Use `sizedLink()` to request a specific width.
+   */
+  hostedBase: string | null;
 }
 
 const API_BASE = 'https://www.googleapis.com/drive/v3/files';
@@ -54,6 +60,32 @@ export function parseFolderId(input: string): string {
  */
 export function thumbUrl(id: string, size = 1000): string {
   return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
+}
+
+/**
+ * Google's Drive `thumbnailLink` looks like
+ *   https://lh3.googleusercontent.com/drive-storage/<...>=s220
+ * Strip the trailing `=s<N>` / `=w<N>-h<N>` size suffix so we can request a
+ * larger, sharper render. Returns the base without a size suffix.
+ */
+function hostedBaseFromLink(link?: string): string | null {
+  if (!link || !link.includes('googleusercontent.com')) return null;
+  return link.replace(/=[swh].*$/i, '');
+}
+
+/** Request a specific width from a hosted googleusercontent base. */
+export function sizedLink(base: string, width: number): string {
+  return `${base}=w${width}`;
+}
+
+/**
+ * Best available image URL at the given width: prefers the high-quality
+ * googleusercontent host, falling back to the generic thumbnail endpoint.
+ */
+export function bestImageUrl(photo: DrivePhoto, width: number): string {
+  return photo.hostedBase
+    ? sizedLink(photo.hostedBase, width)
+    : thumbUrl(photo.id, width);
 }
 
 async function listFiles(query: string, key: string): Promise<DriveFileRaw[]> {
@@ -120,12 +152,16 @@ export async function listImages(
 ): Promise<DrivePhoto[]> {
   const q = `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`;
   const files = await listFiles(q, key);
-  return files.map((f) => ({
-    id: f.id,
-    name: f.name,
-    // Large render for zoom/cover, medium for the grid. Both use the reliable
-    // thumbnail endpoint (works for "anyone with the link" files).
-    url: thumbUrl(f.id, 1600),
-    thumbnail: thumbUrl(f.id, 600),
-  }));
+  return files.map((f) => {
+    const hostedBase = hostedBaseFromLink(f.thumbnailLink);
+    return {
+      id: f.id,
+      name: f.name,
+      // Prefer the high-quality googleusercontent host for both the large
+      // render and the grid thumbnail; fall back to the generic endpoint.
+      url: hostedBase ? sizedLink(hostedBase, 1600) : thumbUrl(f.id, 1600),
+      thumbnail: hostedBase ? sizedLink(hostedBase, 700) : thumbUrl(f.id, 700),
+      hostedBase,
+    };
+  });
 }

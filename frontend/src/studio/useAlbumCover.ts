@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getApiKey, listImages, listSubFolders, thumbUrl } from './drive';
+import { bestImageUrl, getApiKey, listImages, listSubFolders } from './drive';
 import type { Album } from './types';
 
 /**
@@ -34,7 +34,7 @@ export function useAlbumCover(album: Album): string {
           const subs = await listSubFolders(album.driveFolderId, key);
           if (subs.length) imgs = await listImages(subs[0].id, key);
         }
-        if (!cancelled && imgs.length) setCover(thumbUrl(imgs[0].id, 2000));
+        if (!cancelled && imgs.length) setCover(bestImageUrl(imgs[0], 2560));
       } catch {
         // Ignore — caller falls back to the stock image.
       }

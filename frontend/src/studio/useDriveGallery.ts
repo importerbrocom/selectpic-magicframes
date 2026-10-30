@@ -37,7 +37,13 @@ function demoFolders(album: Album): GalleryFolder[] {
 function demoPhotosFor(folderId: string): DrivePhoto[] {
   return demoPhotos
     .filter((p) => p.folder === folderId)
-    .map((p) => ({ id: p.id, name: p.name, url: p.url, thumbnail: p.url }));
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      url: p.url,
+      thumbnail: p.url,
+      hostedBase: null,
+    }));
 }
 
 /**
