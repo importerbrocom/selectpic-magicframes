@@ -36,7 +36,7 @@ export function ClientView({
   const gallery = useDriveGallery(album);
   const albumCover = useAlbumCover(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
-  const [columns, setColumns] = useState<1 | 2 | 4>(4);
+  const [columns, setColumns] = useState<1 | 2 | 4>(1);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Request a sharper image when fewer photos share the row.

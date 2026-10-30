@@ -648,19 +648,21 @@ button:disabled {
 }
 .photoThumb {
   position: relative;
-  aspect-ratio: 4/3;
+  background: #0d0e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Show the whole photo (no crop); cap height so landscape shots at
+     1-per-row don't become enormous. */
+  max-height: 78vh;
   overflow: hidden;
-  background: #222;
 }
 .photoThumb img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 78vh;
+  object-fit: contain;
   display: block;
-  transition: transform 0.35s;
-}
-.photoCard:hover .photoThumb img {
-  transform: scale(1.035);
 }
 .zoomBtn {
   position: absolute;
@@ -1922,4 +1924,23 @@ a.selectedCard figcaption {
   background: #c7a15b;
   color: #100e08;
   border-color: #c7a15b;
+}
+
+/* Per-row-count max heights so multi-column grids stay tidy while still
+   showing the full (uncropped) photo. */
+.photoGrid.cols-1 .photoThumb,
+.photoGrid.cols-1 .photoThumb img {
+  max-height: 80vh;
+}
+.photoGrid.cols-2 .photoThumb,
+.photoGrid.cols-2 .photoThumb img {
+  max-height: 60vh;
+}
+.photoGrid.cols-4 .photoThumb,
+.photoGrid.cols-4 .photoThumb img {
+  max-height: 340px;
+}
+/* Let cards size to their content so varied photo ratios sit naturally. */
+.photoGrid {
+  align-items: start;
 }
