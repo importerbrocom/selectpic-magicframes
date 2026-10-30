@@ -1888,9 +1888,15 @@ a.selectedCard figcaption {
   background: transparent;
   color: #c6c0b5;
   border: 1px solid #38342b;
-  padding: 8px 11px;
+  padding: 7px 11px;
   font-size: 12px;
-  border-radius: 2px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.layoutBtn svg {
+  display: block;
 }
 .layoutBtn.active {
   background: #c7a15b;

@@ -41,7 +41,8 @@ export function ClientView({
 
   // Request a sharper image when fewer photos share the row.
   const gridWidth = columns === 1 ? 1600 : columns === 2 ? 1000 : 700;
-  const canDownload = Boolean(album.allowDownload);
+  // Downloads are available by default (admin no longer toggles this).
+  const canDownload = album.allowDownload !== false;
 
   async function downloadOne(p: DrivePhoto) {
     if (!album.driveFolderId) return;
@@ -196,8 +197,10 @@ export function ClientView({
                   className={'layoutBtn' + (columns === n ? ' active' : '')}
                   onClick={() => setColumns(n)}
                   aria-label={n + ' per row'}
+                  title={n + ' per row'}
                 >
-                  {n === 1 ? '▭' : n === 2 ? '▦' : '⊞'} {n}
+                  <LayoutIcon cols={n} />
+                  <span>{n}</span>
                 </button>
               ))}
             </div>
@@ -425,5 +428,41 @@ export function ClientView({
         </div>
       )}
     </section>
+  );
+}
+
+/** Small icon showing the per-row layout (1, 2 or 4 cells). */
+function LayoutIcon({ cols }: { cols: 1 | 2 | 4 }) {
+  const common = {
+    width: '15',
+    height: '15',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'aria-hidden': true,
+  };
+  if (cols === 1) {
+    return (
+      <svg {...common}>
+        <rect x="3" y="6" width="18" height="12" rx="1.5" />
+      </svg>
+    );
+  }
+  if (cols === 2) {
+    return (
+      <svg {...common}>
+        <rect x="3" y="6" width="8" height="12" rx="1.5" />
+        <rect x="13" y="6" width="8" height="12" rx="1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <rect x="3" y="4" width="8" height="7" rx="1.2" />
+      <rect x="13" y="4" width="8" height="7" rx="1.2" />
+      <rect x="3" y="13" width="8" height="7" rx="1.2" />
+      <rect x="13" y="13" width="8" height="7" rx="1.2" />
+    </svg>
   );
 }

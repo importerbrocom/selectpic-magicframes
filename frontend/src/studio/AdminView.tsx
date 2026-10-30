@@ -85,7 +85,6 @@ export function AdminView({
   const [newPassword, setNewPassword] = useState('');
   const [newDriveLink, setNewDriveLink] = useState('');
   const [newCover, setNewCover] = useState('');
-  const [newAllowDownload, setNewAllowDownload] = useState(false);
 
   const statusCounts = useMemo(() => {
     let awaiting = 0;
@@ -115,7 +114,6 @@ export function AdminView({
     setNewPassword(album.password);
     setNewDriveLink(album.driveLink);
     setNewCover(album.cover);
-    setNewAllowDownload(Boolean(album.allowDownload));
     setTab('create');
   }
 
@@ -126,7 +124,6 @@ export function AdminView({
     setNewPassword('');
     setNewCover('');
     setNewDriveLink('');
-    setNewAllowDownload(false);
   }
 
   function openCreate() {
@@ -153,7 +150,6 @@ export function AdminView({
         driveLink,
         driveFolderId,
         cover: newCover.trim() || photos[0].url,
-        allowDownload: newAllowDownload,
       });
       const id = editingId;
       resetForm();
@@ -177,7 +173,6 @@ export function AdminView({
       views: 0,
       locked: false,
       selections: {},
-      allowDownload: newAllowDownload,
     });
     resetForm();
     setTab('albums');
@@ -347,14 +342,6 @@ export function AdminView({
                   onUpdateAlbum(detailAlbum.id, patch);
                 }
               }}
-              onToggleDownloads={(allow) => {
-                onUpdateAlbum(detailAlbum.id, { allowDownload: allow });
-                showToast(
-                  allow
-                    ? 'Client photo downloads enabled.'
-                    : 'Client photo downloads disabled.',
-                );
-              }}
               showToast={showToast}
             />
           ) : (
@@ -474,14 +461,6 @@ export function AdminView({
                   onChange={(e) => setNewCover(e.target.value)}
                 />
               </div>
-              <label className="remember">
-                <input
-                  type="checkbox"
-                  checked={newAllowDownload}
-                  onChange={(e) => setNewAllowDownload(e.target.checked)}
-                />{' '}
-                Allow the client to download photos
-              </label>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn goldbtn">
                   {editingId != null ? 'Save changes' : 'Create private album'}
@@ -595,7 +574,6 @@ interface AlbumDetailProps {
   onDelete: () => void;
   onCopyLink: (link: string) => void;
   onDriveResolved: (info: { photos: number; cover: string | null }) => void;
-  onToggleDownloads: (allow: boolean) => void;
   showToast: (msg: string) => void;
 }
 
@@ -609,7 +587,6 @@ function AlbumDetail({
   onDelete,
   onCopyLink,
   onDriveResolved,
-  onToggleDownloads,
   showToast,
 }: AlbumDetailProps) {
   const shareLink = `${location.href.split('#')[0]}#client-${album.id}`;
@@ -741,14 +718,6 @@ function AlbumDetail({
               </button>
               <button className="btn outline" onClick={onToggleDisabled}>
                 {album.locked ? 'Reopen selections' : 'Close selections'}
-              </button>
-              <button
-                className="btn outline"
-                onClick={() => onToggleDownloads(!album.allowDownload)}
-              >
-                {album.allowDownload
-                  ? 'Downloads: On'
-                  : 'Downloads: Off'}
               </button>
               <button className="btn outline detailDelete" onClick={onDelete}>
                 Delete
