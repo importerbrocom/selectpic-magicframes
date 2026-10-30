@@ -1902,3 +1902,24 @@ a.selectedCard figcaption {
     justify-content: space-between;
   }
 }
+
+/* Per-photo download button (client gallery) */
+.dlBtn {
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  border: 1px solid #ffffff90;
+  background: #080908aa;
+  color: #fff;
+  border-radius: 50%;
+  width: 33px;
+  height: 33px;
+  font-size: 15px;
+  display: grid;
+  place-items: center;
+}
+.dlBtn:hover {
+  background: #c7a15b;
+  color: #100e08;
+  border-color: #c7a15b;
+}

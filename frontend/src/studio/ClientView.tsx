@@ -4,6 +4,7 @@ import { SocialIcons } from './SocialIcons';
 import { selectionCounts } from './helpers';
 import { useDriveGallery } from './useDriveGallery';
 import { useAlbumCover } from './useAlbumCover';
+import { bestImageUrl, downloadSelectedZip } from './drive';
 import type { DrivePhoto } from './drive';
 import type { Album, PhotoFilter, SelectionType } from './types';
 
@@ -36,6 +37,25 @@ export function ClientView({
   const albumCover = useAlbumCover(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
   const [columns, setColumns] = useState<1 | 2 | 4>(4);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Request a sharper image when fewer photos share the row.
+  const gridWidth = columns === 1 ? 1600 : columns === 2 ? 1000 : 700;
+  const canDownload = Boolean(album.allowDownload);
+
+  async function downloadOne(p: DrivePhoto) {
+    if (!album.driveFolderId) return;
+    setDownloadingId(p.id);
+    try {
+      await downloadSelectedZip(album.name, 'photo', [
+        { file_id: p.id, file_name: p.name },
+      ]);
+    } catch (e) {
+      showToast((e as Error).message);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
   const [zoomId, setZoomId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -217,11 +237,26 @@ export function ClientView({
                 >
                   <div className="photoThumb">
                     <img
-                      src={p.thumbnail ?? p.url}
+                      src={
+                        album.driveFolderId
+                          ? bestImageUrl(p, gridWidth)
+                          : (p.thumbnail ?? p.url)
+                      }
                       alt={p.name}
                       loading="lazy"
                       referrerPolicy="no-referrer"
                     />
+                    {canDownload && album.driveFolderId && (
+                      <button
+                        className="dlBtn"
+                        aria-label={'Download ' + p.name}
+                        title="Download"
+                        disabled={downloadingId === p.id}
+                        onClick={() => downloadOne(p)}
+                      >
+                        {downloadingId === p.id ? '…' : '⭳'}
+                      </button>
+                    )}
                     <button
                       className="zoomBtn"
                       aria-label={'Zoom ' + p.name}

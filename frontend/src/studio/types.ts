@@ -30,6 +30,8 @@ export interface Album {
   selections: Selections;
   /** ISO timestamp of the last Drive sync, if any. */
   lastSynced?: string;
+  /** When true, clients can download photos from the client gallery. */
+  allowDownload?: boolean;
 }
 
 export type StaffStatus = 'active' | 'suspended';
