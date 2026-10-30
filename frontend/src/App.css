@@ -531,16 +531,16 @@ button:disabled {
   gap: 18px;
 }
 .clientHero {
-  height: 280px;
+  height: 440px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   position: relative;
-  background-image: linear-gradient(#06080591, #060805a8),
+  background-image: linear-gradient(#0608053d, #06080561),
     url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2000&q=85');
   background-size: cover;
-  background-position: center 42%;
+  background-position: center 30%;
   background-repeat: no-repeat;
 }
 .clientHero h1 {
@@ -946,7 +946,7 @@ button:disabled {
     font-size: 22px;
   }
   .clientHero {
-    height: 230px;
+    height: 300px;
   }
   .clientBody {
     padding: 24px 4% 45px;
