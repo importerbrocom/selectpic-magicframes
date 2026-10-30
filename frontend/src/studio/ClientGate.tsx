@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
 import { SocialIcons } from './SocialIcons';
+import { useAlbumCover } from './useAlbumCover';
 import type { Album } from './types';
 
 interface ClientGateProps {
@@ -11,6 +12,7 @@ interface ClientGateProps {
 export function ClientGate({ album, onUnlock }: ClientGateProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const cover = useAlbumCover(album);
 
   // Reset the field whenever the album being gated changes.
   useEffect(() => {
@@ -34,7 +36,16 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
 
   return (
     <section id="clientGate">
-      <div className="gateBg" />
+      <div
+        className="gateBg"
+        style={
+          cover
+            ? {
+                backgroundImage: `linear-gradient(#071008a8,#071008b8), url('${cover}')`,
+              }
+            : undefined
+        }
+      />
       <div className="gateInner">
         <BrandMark src="/logotrans.png" imgClassName="gateLogo" />
         <div className="eyebrow">A STORY IN EVERY FRAME</div>

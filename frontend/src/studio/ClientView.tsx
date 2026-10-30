@@ -3,6 +3,7 @@ import { BrandMark } from './BrandMark';
 import { SocialIcons } from './SocialIcons';
 import { selectionCounts } from './helpers';
 import { useDriveGallery } from './useDriveGallery';
+import { useAlbumCover } from './useAlbumCover';
 import type { DrivePhoto } from './drive';
 import type { Album, PhotoFilter, SelectionType } from './types';
 
@@ -32,6 +33,7 @@ export function ClientView({
   showToast,
 }: ClientViewProps) {
   const gallery = useDriveGallery(album);
+  const albumCover = useAlbumCover(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
   const [zoomId, setZoomId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -42,8 +44,8 @@ export function ClientView({
   const activeFolderName =
     gallery.folders.find((f) => f.id === gallery.activeFolderId)?.name ?? '';
 
-  // Hero background: the album cover if set, otherwise the first loaded photo.
-  const heroImage = album.cover || gallery.photos[0]?.url || '';
+  // Hero background: resolved album cover, else the first loaded gallery photo.
+  const heroImage = albumCover || gallery.photos[0]?.url || '';
 
   const visiblePhotos = useMemo(() => {
     let list = gallery.photos;
