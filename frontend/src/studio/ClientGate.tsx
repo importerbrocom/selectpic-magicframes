@@ -41,7 +41,7 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
         style={
           cover
             ? {
-                backgroundImage: `linear-gradient(#071008a8,#071008b8), url('${cover}')`,
+                backgroundImage: `linear-gradient(#0710084d,#07100866), url('${cover}')`,
               }
             : undefined
         }
