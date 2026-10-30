@@ -64,10 +64,20 @@ function loadAlbums(): Album[] {
   }
 }
 
-/** Read a #client-<id> deep link from the URL at startup, if present. */
-function initialClientId(): number | null {
-  const match = location.hash.match(/^#client-(\d+)$/);
-  return match ? Number(match[1]) : null;
+/**
+ * Read a client deep link from the URL at startup. Accepts several shapes so
+ * the share link works however it arrives:
+ *   #client-5, #/client-5, %23client-5 (encoded), ?client=5
+ */
+function parseClientId(): number | null {
+  const raw = location.href;
+  // hash or encoded hash anywhere in the URL
+  const hashMatch = decodeURIComponent(raw).match(/#\/?client-(\d+)/);
+  if (hashMatch) return Number(hashMatch[1]);
+  // ?client=5 query fallback
+  const query = new URLSearchParams(location.search).get('client');
+  if (query && /^\d+$/.test(query)) return Number(query);
+  return null;
 }
 
 export default function App() {
@@ -77,10 +87,10 @@ export default function App() {
   // If the page was opened via a client share link, start DIRECTLY on that
   // album's password gate — never flash the admin login.
   const [screen, setScreen] = useState<Screen>(() =>
-    initialClientId() !== null ? 'clientGate' : 'login',
+    parseClientId() !== null ? 'clientGate' : 'login',
   );
   const [activeAlbumId, setActiveAlbumId] = useState<number>(
-    () => initialClientId() ?? loadAlbums()[0]?.id ?? initialAlbums[0].id,
+    () => parseClientId() ?? loadAlbums()[0]?.id ?? initialAlbums[0].id,
   );
   const { message: toast, showToast } = useToast();
 
@@ -120,15 +130,13 @@ export default function App() {
     }
   }, []);
 
-  // Deep-link support: #client-<id> jumps to that album's gate. Runs once on
-  // mount and only in response to real hashchange events.
+  // Deep-link support: a client link jumps to that album's gate. Runs once on
+  // mount and in response to hashchange events. If the album isn't in this
+  // browser yet we still show the gate (rather than the admin login).
   useEffect(() => {
     function fromHash() {
-      const match = location.hash.match(/^#client-(\d+)$/);
-      if (match) {
-        const id = Number(match[1]);
-        if (albumsRef.current.some((a) => a.id === id)) openClientGate(id);
-      }
+      const id = parseClientId();
+      if (id !== null) openClientGate(id);
     }
     fromHash();
     window.addEventListener('hashchange', fromHash);
