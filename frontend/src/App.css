@@ -637,7 +637,7 @@ button:disabled {
 }
 .photoGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   gap: 15px;
 }
 .photoCard {
@@ -836,7 +836,7 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .photoGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(min(var(--cols, 4), 3), minmax(0, 1fr));
   }
   .adminMain {
     padding: 28px 24px;
@@ -958,7 +958,7 @@ button:disabled {
     font-size: 24px;
   }
   .photoGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(min(var(--cols, 4), 2), minmax(0, 1fr));
     gap: 9px;
   }
   .photoMeta {
@@ -992,7 +992,7 @@ button:disabled {
 }
 @media (max-width: 400px) {
   .photoGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(min(var(--cols, 2), 2), minmax(0, 1fr));
   }
   .markBtn {
     font-size: 9px;
@@ -1869,4 +1869,36 @@ a.selectedCard figcaption {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Gallery toolbar: layout (per-row) control */
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.layoutButtons {
+  display: flex;
+  gap: 6px;
+}
+.layoutBtn {
+  background: transparent;
+  color: #c6c0b5;
+  border: 1px solid #38342b;
+  padding: 8px 11px;
+  font-size: 12px;
+  border-radius: 2px;
+}
+.layoutBtn.active {
+  background: #c7a15b;
+  color: #100e08;
+  border-color: #c7a15b;
+}
+
+@media (max-width: 760px) {
+  .toolbarRight {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

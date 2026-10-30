@@ -35,6 +35,7 @@ export function ClientView({
   const gallery = useDriveGallery(album);
   const albumCover = useAlbumCover(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
+  const [columns, setColumns] = useState<1 | 2 | 4>(4);
   const [zoomId, setZoomId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -167,20 +168,37 @@ export function ClientView({
 
         <div className="galleryToolbar">
           <h3>{activeFolderName ? activeFolderName + ' photographs' : 'Photographs'}</h3>
-          <div className="filterButtons">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                className={'filterBtn' + (filter === f.key ? ' active' : '')}
-                onClick={() => setFilter(f.key)}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="toolbarRight">
+            <div className="layoutButtons" title="Photos per row">
+              {([1, 2, 4] as const).map((n) => (
+                <button
+                  key={n}
+                  className={'layoutBtn' + (columns === n ? ' active' : '')}
+                  onClick={() => setColumns(n)}
+                  aria-label={n + ' per row'}
+                >
+                  {n === 1 ? '▭' : n === 2 ? '▦' : '⊞'} {n}
+                </button>
+              ))}
+            </div>
+            <div className="filterButtons">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  className={'filterBtn' + (filter === f.key ? ' active' : '')}
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="photoGrid">
+        <div
+          className={'photoGrid cols-' + columns}
+          style={{ ['--cols' as string]: String(columns) }}
+        >
           {gallery.loadingPhotos ? (
             <div className="empty" style={{ gridColumn: '1/-1', color: '#aaa' }}>
               Loading photos…
