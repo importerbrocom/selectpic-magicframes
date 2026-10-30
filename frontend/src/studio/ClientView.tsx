@@ -42,6 +42,9 @@ export function ClientView({
   const activeFolderName =
     gallery.folders.find((f) => f.id === gallery.activeFolderId)?.name ?? '';
 
+  // Hero background: the album cover if set, otherwise the first loaded photo.
+  const heroImage = album.cover || gallery.photos[0]?.url || '';
+
   const visiblePhotos = useMemo(() => {
     let list = gallery.photos;
     if (filter === 'selected') list = list.filter((p) => album.selections[p.id]);
@@ -85,7 +88,16 @@ export function ClientView({
         </div>
       </header>
 
-      <div className="clientHero">
+      <div
+        className="clientHero"
+        style={
+          heroImage
+            ? {
+                backgroundImage: `linear-gradient(#06080591,#060805a8), url('${heroImage}')`,
+              }
+            : undefined
+        }
+      >
         <div>
           <div className="eyebrow">A STORY IN EVERY FRAME</div>
           <h1 className="script">{album.name}</h1>
