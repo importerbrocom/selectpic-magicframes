@@ -73,9 +73,12 @@ function hostedBaseFromLink(link?: string): string | null {
   return link.replace(/=[swh].*$/i, '');
 }
 
-/** Request a specific width from a hosted googleusercontent base. */
+/**
+ * Request a specific width from a hosted googleusercontent base.
+ * `-rj` = high-quality JPEG, no upscaling — sharper than the default render.
+ */
 export function sizedLink(base: string, width: number): string {
-  return `${base}=w${width}`;
+  return `${base}=w${width}-rj`;
 }
 
 /**
