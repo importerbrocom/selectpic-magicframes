@@ -870,22 +870,19 @@ button:disabled {
   #adminView {
     grid-template-columns: 1fr;
   }
-  /* Sidebar becomes: a compact sticky TOP header (logo) + a fixed BOTTOM
-     tab bar (nav), app-style. */
+  /* Sidebar becomes: a plain TOP logo header + a fixed WHITE BOTTOM tab bar. */
   .sidebar {
     display: contents; /* let logo + nav position independently */
   }
   .sideLogo,
   .sideLogo--image {
-    position: sticky;
-    top: 0;
-    z-index: 20;
+    position: static;
     width: 100%;
     height: auto;
     margin: 0;
-    padding: 10px 14px;
-    background: var(--surface, #f8f8f6);
-    border-bottom: 1px solid #e6e6e2;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #ececec;
     display: flex;
     align-items: center;
   }
@@ -893,7 +890,7 @@ button:disabled {
     font-size: 19px;
   }
   .sideLogoImg {
-    width: 86px;
+    width: 78px;
   }
   .nav {
     position: fixed;
@@ -906,25 +903,28 @@ button:disabled {
     justify-content: space-around;
     gap: 2px;
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    background: #0f0f0f;
-    border-top: 1px solid #000;
+    background: #ffffff;
+    border-top: 1px solid #e6e6e6;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
   }
-  .nav button {
+  .nav button,
+  #adminView[data-theme='modern'] .nav button {
     flex: 1;
     flex-direction: column;
     gap: 3px;
     padding: 7px 2px;
     font-size: 10px;
-    color: #cfcfcf;
+    color: #555;
     border-radius: 8px;
     white-space: nowrap;
     align-items: center;
     justify-content: center;
     min-width: 0;
   }
-  .nav button.active {
-    background: #c7a15b;
-    color: #15120a;
+  .nav button.active,
+  #adminView[data-theme='modern'] .nav button.active {
+    background: #111;
+    color: #fff;
   }
   .nav .ico {
     display: block;
@@ -936,7 +936,7 @@ button:disabled {
   }
   .adminMain {
     /* Leave room for the fixed bottom tab bar. */
-    padding: 18px 14px calc(78px + env(safe-area-inset-bottom));
+    padding: 18px 14px calc(82px + env(safe-area-inset-bottom));
   }
   .topline h1 {
     font-size: 28px;
