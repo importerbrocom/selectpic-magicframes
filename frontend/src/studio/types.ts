@@ -13,6 +13,8 @@ export type Selections = Record<string, SelectionType>;
 
 export interface Album {
   id: number;
+  /** Server-assigned URL slug (name-based share link). */
+  slug?: string;
   name: string;
   subtitle: string;
   password: string;

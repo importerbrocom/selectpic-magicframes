@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Public album lookup by slug (used by the client share link on any device).
+Route::get('projects/by-slug/{slug}', [ProjectController::class, 'showBySlug']);
+
 // Projects CRUD.
 Route::apiResource('projects', ProjectController::class);
 

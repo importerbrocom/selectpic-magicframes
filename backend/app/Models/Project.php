@@ -12,9 +12,23 @@ class Project extends Model
 
     protected $fillable = [
         'name',
+        'slug',
+        'subtitle',
+        'password',
+        'cover',
         'google_drive_folder_id',
+        'drive_link',
         'bride_name',
         'groom_name',
+        'locked',
+        'allow_download',
+        'views',
+    ];
+
+    protected $casts = [
+        'locked' => 'boolean',
+        'allow_download' => 'boolean',
+        'views' => 'integer',
     ];
 
     /**

@@ -589,7 +589,10 @@ function AlbumDetail({
   onDriveResolved,
   showToast,
 }: AlbumDetailProps) {
-  const shareLink = `${location.href.split('#')[0]}#client-${album.id}`;
+  const origin = location.origin;
+  const shareLink = album.slug
+    ? `${origin}/a/${album.slug}`
+    : `${location.href.split('#')[0]}#client-${album.id}`;
   const counts = selectionCounts(album);
   const totalSelected = counts.bride + counts.groom + counts.both;
   const status = selectionStatus(album);
