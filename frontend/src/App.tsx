@@ -212,6 +212,21 @@ export default function App() {
     }
   }
 
+  /** Pull an album's selections from the server (admin detail view). */
+  function handleLoadSelections(id: number) {
+    if (!USE_API) return;
+    api
+      .getSelections(id)
+      .then((selections) => {
+        setAlbums((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, selections } : a)),
+        );
+      })
+      .catch(() => {
+        /* ignore — counts just stay as-is */
+      });
+  }
+
   function handleAddStaff(data: Omit<StaffMember, 'id' | 'status'>): boolean {
     const email = data.email.trim().toLowerCase();
     if (staff.some((s) => s.email.toLowerCase() === email)) return false;
@@ -306,6 +321,7 @@ export default function App() {
           onCreateAlbum={handleCreateAlbum}
           onUpdateAlbum={handleUpdateAlbum}
           onDeleteAlbum={handleDeleteAlbum}
+          onLoadSelections={handleLoadSelections}
           onAddStaff={handleAddStaff}
           onUpdateStaff={handleUpdateStaff}
           onDeleteStaff={handleDeleteStaff}

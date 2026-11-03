@@ -25,6 +25,7 @@ interface AdminViewProps {
   onCreateAlbum: (album: Omit<Album, 'id'>) => number;
   onUpdateAlbum: (id: number, patch: Partial<Album>) => void;
   onDeleteAlbum: (id: number) => void;
+  onLoadSelections: (id: number) => void;
   onAddStaff: (data: Omit<StaffMember, 'id' | 'status'>) => boolean;
   onUpdateStaff: (id: number, patch: Partial<StaffMember>) => void;
   onDeleteStaff: (id: number) => void;
@@ -65,6 +66,7 @@ export function AdminView({
   onCreateAlbum,
   onUpdateAlbum,
   onDeleteAlbum,
+  onLoadSelections,
   onAddStaff,
   onUpdateStaff,
   onDeleteStaff,
@@ -106,6 +108,12 @@ export function AdminView({
 
   const detailAlbum = albums.find((a) => a.id === detailId) ?? null;
   const deletingAlbum = albums.find((a) => a.id === deletingId) ?? null;
+
+  // When an album detail opens, pull its latest selections from the server.
+  useEffect(() => {
+    if (detailId != null) onLoadSelections(detailId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailId]);
 
   function startEdit(album: Album) {
     setEditingId(album.id);
