@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Schema;
  *
  * Laravel's enum() column adds a CHECK (choice IN ('bride','groom')) on
  * SQLite, which silently rejected 'both' inserts. SQLite can't ALTER a CHECK
- * constraint in place, so we rebuild the column as plain TEXT. MySQL/other
- * drivers use a direct column change.
+ * constraint in place, so we rebuild the table without it. Written to be
+ * idempotent / recover from a previously half-applied attempt.
  */
 return new class extends Migration
 {
@@ -18,31 +18,60 @@ return new class extends Migration
     {
         $driver = Schema::getConnection()->getDriverName();
 
-        if ($driver === 'sqlite') {
-            // Recreate the column without the CHECK constraint, preserving data.
-            Schema::table('image_selections', function ($table) {
-                $table->string('choice_tmp')->nullable();
-            });
-            DB::statement('UPDATE image_selections SET choice_tmp = choice');
-            Schema::table('image_selections', function ($table) {
-                $table->dropColumn('choice');
-            });
-            Schema::table('image_selections', function ($table) {
-                $table->string('choice')->default('bride');
-            });
-            DB::statement('UPDATE image_selections SET choice = choice_tmp');
-            Schema::table('image_selections', function ($table) {
-                $table->dropColumn('choice_tmp');
-            });
-        } elseif ($driver === 'mysql') {
-            DB::statement(
-                "ALTER TABLE image_selections MODIFY choice VARCHAR(16) NOT NULL DEFAULT 'bride'"
-            );
+        if ($driver !== 'sqlite') {
+            if ($driver === 'mysql') {
+                DB::statement(
+                    "ALTER TABLE image_selections MODIFY choice VARCHAR(16) NOT NULL DEFAULT 'bride'"
+                );
+            }
+            return;
         }
+
+        // --- SQLite: rebuild the table without the CHECK constraint ---
+
+        // Clean up any leftover temp column from a prior partial run.
+        if (Schema::hasColumn('image_selections', 'choice_tmp')) {
+            DB::statement('ALTER TABLE image_selections DROP COLUMN choice_tmp');
+        }
+
+        DB::transaction(function () {
+            // Drop indexes that reference `choice` (they'll be recreated).
+            DB::statement('DROP INDEX IF EXISTS image_selections_project_id_file_id_choice_unique');
+            DB::statement('DROP INDEX IF EXISTS image_selections_project_id_choice_index');
+
+            // Build a fresh table with `choice` as plain TEXT (no CHECK).
+            DB::statement('
+                CREATE TABLE image_selections_new (
+                    id integer primary key autoincrement not null,
+                    project_id integer not null,
+                    file_id varchar not null,
+                    file_name varchar,
+                    thumbnail_link varchar,
+                    choice varchar not null default \'bride\',
+                    created_at datetime,
+                    updated_at datetime,
+                    foreign key("project_id") references "projects"("id") on delete cascade
+                )
+            ');
+
+            DB::statement('
+                INSERT INTO image_selections_new
+                    (id, project_id, file_id, file_name, thumbnail_link, choice, created_at, updated_at)
+                SELECT id, project_id, file_id, file_name, thumbnail_link, choice, created_at, updated_at
+                FROM image_selections
+            ');
+
+            DB::statement('DROP TABLE image_selections');
+            DB::statement('ALTER TABLE image_selections_new RENAME TO image_selections');
+
+            // Recreate the indexes.
+            DB::statement('CREATE UNIQUE INDEX image_selections_project_id_file_id_choice_unique ON image_selections (project_id, file_id, choice)');
+            DB::statement('CREATE INDEX image_selections_project_id_choice_index ON image_selections (project_id, choice)');
+        });
     }
 
     public function down(): void
     {
-        // No-op: keeping the column as a plain string is harmless.
+        // No-op: a plain string column is a harmless superset.
     }
 };
