@@ -49,12 +49,13 @@ class ImageSelectionController extends Controller
             'choice' => ['required', Rule::in(['bride', 'groom', 'both'])],
         ]);
 
+        // One selection per photo: a photo is marked bride, groom, or both.
         $existing = $project->selections()
             ->where('file_id', $data['file_id'])
-            ->where('choice', $data['choice'])
             ->first();
 
-        if ($existing) {
+        // Clicking the same choice again clears the selection (toggle off).
+        if ($existing && $existing->choice === $data['choice']) {
             $existing->delete();
 
             return response()->json([
@@ -63,11 +64,21 @@ class ImageSelectionController extends Controller
             ]);
         }
 
-        $selection = $project->selections()->create($data);
+        // Otherwise set/replace this photo's choice.
+        if ($existing) {
+            $existing->update([
+                'choice' => $data['choice'],
+                'file_name' => $data['file_name'] ?? $existing->file_name,
+                'thumbnail_link' => $data['thumbnail_link'] ?? $existing->thumbnail_link,
+            ]);
+            $selection = $existing;
+        } else {
+            $selection = $project->selections()->create($data);
+        }
 
         return response()->json([
             'data' => $selection,
-            'meta' => ['action' => 'added'],
+            'meta' => ['action' => 'saved'],
         ], 201);
     }
 

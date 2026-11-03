@@ -23,6 +23,17 @@ return new class extends Migration
                 DB::statement(
                     "ALTER TABLE image_selections MODIFY choice VARCHAR(16) NOT NULL DEFAULT 'bride'"
                 );
+                // Switch to one-selection-per-photo uniqueness.
+                try {
+                    DB::statement('ALTER TABLE image_selections DROP INDEX image_selections_project_id_file_id_choice_unique');
+                } catch (\Throwable) {
+                    // index name may differ / already dropped
+                }
+                try {
+                    DB::statement('ALTER TABLE image_selections ADD UNIQUE image_selections_project_id_file_id_unique (project_id, file_id)');
+                } catch (\Throwable) {
+                    // already exists
+                }
             }
             return;
         }
@@ -64,8 +75,8 @@ return new class extends Migration
             DB::statement('DROP TABLE image_selections');
             DB::statement('ALTER TABLE image_selections_new RENAME TO image_selections');
 
-            // Recreate the indexes.
-            DB::statement('CREATE UNIQUE INDEX image_selections_project_id_file_id_choice_unique ON image_selections (project_id, file_id, choice)');
+            // One selection per (project, file): unique on those two columns.
+            DB::statement('CREATE UNIQUE INDEX image_selections_project_id_file_id_unique ON image_selections (project_id, file_id)');
             DB::statement('CREATE INDEX image_selections_project_id_choice_index ON image_selections (project_id, choice)');
         });
     }
