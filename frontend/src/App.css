@@ -1863,6 +1863,9 @@ a.clientBrand {
   place-items: center;
   color: #a7a29a;
   font-size: 13px;
+  text-align: center;
+  padding: 0 24px;
+  line-height: 1.5;
 }
 .cardCoverPlaceholder {
   height: 180px;

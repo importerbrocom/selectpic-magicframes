@@ -15,6 +15,7 @@ import {
   thumbUrl,
 } from './drive';
 import { photos } from './data';
+import { CoverImg } from './CoverImg';
 import { StaffView } from './StaffView';
 import { ProfileView, loadProfile } from './ProfileView';
 import { SettingsView } from './SettingsView';
@@ -290,11 +291,10 @@ export function AdminView({
                   setTab('albums');
                 }}
               >
-                {a.cover ? (
-                  <img src={a.cover} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="coverPlaceholder cardCoverPlaceholder" />
-                )}
+                <CoverImg
+                  src={a.cover}
+                  placeholderClassName="coverPlaceholder cardCoverPlaceholder"
+                />
                 <div className="albumInfo">
                   <div className="albumCardHead">
                     <h3>{a.name}</h3>
@@ -376,15 +376,10 @@ export function AdminView({
                       key={a.id}
                       onClick={() => setDetailId(a.id)}
                     >
-                      {a.cover ? (
-                        <img
-                          src={a.cover}
-                          alt=""
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="coverPlaceholder cardCoverPlaceholder" />
-                      )}
+                      <CoverImg
+                        src={a.cover}
+                        placeholderClassName="coverPlaceholder cardCoverPlaceholder"
+                      />
                       <div className="albumInfo">
                         <div className="albumCardHead">
                           <h3>{a.name}</h3>
@@ -470,10 +465,15 @@ export function AdminView({
               <div className="field">
                 <label>Cover image URL (optional)</label>
                 <input
-                  placeholder="https://…"
+                  placeholder="https://… (direct image or Drive file link)"
                   value={newCover}
                   onChange={(e) => setNewCover(e.target.value)}
                 />
+                <span className="muted tiny">
+                  Paste a direct image link, or a Google Drive <b>file</b> link
+                  shared as “Anyone with the link”. Google Photos album links
+                  won’t work. Leave empty to use the first Drive photo.
+                </span>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn goldbtn">
@@ -668,18 +668,12 @@ function AlbumDetail({
       <div className="detailGrid">
         {/* Left: album summary + actions */}
         <div className="panel detailMain">
-          {album.cover ? (
-            <img
-              className="detailCover"
-              src={album.cover}
-              alt=""
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="detailCover coverPlaceholder">
-              {album.driveFolderId ? 'Loading cover…' : 'No cover image'}
-            </div>
-          )}
+          <CoverImg
+            src={album.cover}
+            className="detailCover"
+            placeholderClassName="detailCover coverPlaceholder"
+            emptyText={album.driveFolderId ? 'Loading cover…' : 'No cover image'}
+          />
           <div className="detailBody">
             <div className="detailTitleRow">
               <div>

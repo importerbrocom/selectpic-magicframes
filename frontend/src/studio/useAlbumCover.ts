@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { bestImageUrl, getApiKey, listImages, listSubFolders } from './drive';
+import {
+  bestImageUrl,
+  getApiKey,
+  listImages,
+  listSubFolders,
+  normalizeCoverUrl,
+} from './drive';
 import type { Album } from './types';
 
 /**
@@ -11,22 +17,18 @@ import type { Album } from './types';
  *   3. '' (callers fall back to the themed stock image).
  */
 export function useAlbumCover(album: Album): string {
-  const [cover, setCover] = useState(album.cover || '');
+  const stored = normalizeCoverUrl(album.cover);
+  const [cover, setCover] = useState(stored);
 
   useEffect(() => {
-    // A stored cover wins immediately.
-    if (album.cover) {
-      setCover(album.cover);
-      return;
-    }
-    const key = getApiKey();
-    if (!album.driveFolderId || !key) {
-      setCover('');
-      return;
-    }
-
     let cancelled = false;
-    (async () => {
+    const key = getApiKey();
+
+    async function fromDrive() {
+      if (!album.driveFolderId || !key) {
+        if (!cancelled) setCover('');
+        return;
+      }
       try {
         // Try the parent folder first, then its first sub-folder.
         let imgs = await listImages(album.driveFolderId, key);
@@ -38,12 +40,24 @@ export function useAlbumCover(album: Album): string {
       } catch {
         // Ignore — caller falls back to the stock image.
       }
-    })();
+    }
+
+    if (stored) {
+      // Use the stored cover only if it actually loads; otherwise fall back
+      // to the first Drive photo instead of a blank background.
+      setCover(stored);
+      const probe = new Image();
+      probe.referrerPolicy = 'no-referrer';
+      probe.onerror = () => void fromDrive();
+      probe.src = stored;
+    } else {
+      void fromDrive();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [album.cover, album.driveFolderId]);
+  }, [stored, album.driveFolderId]);
 
   return cover;
 }

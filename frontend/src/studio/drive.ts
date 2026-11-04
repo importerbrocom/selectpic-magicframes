@@ -61,18 +61,22 @@ export function parseFolderId(input: string): string {
  * size — grid, cover and full-screen zoom.)
  */
 /**
- * Turn a pasted cover link into something an <img> can load. Google Drive
- * *share* links (file/d/<id>/view, open?id=, uc?id=) are web pages, not
- * images, so convert them to a Drive thumbnail URL. Other URLs pass through.
+ * Turn a pasted cover link into a URL an <img> can load.
+ *  - Drive share links (file/d/<id>/view, open?id=, uc?id=, thumbnail?id=)
+ *    are web pages, not images: convert to Google's direct image host.
+ *  - Google Photos share links (photos.app.goo.gl / photos.google.com) are
+ *    albums, not images, and can't be converted: returned as-is.
+ *  - Anything else passes through unchanged.
+ * Also applied when rendering, so covers saved before this fix still work.
  */
-export function normalizeCoverUrl(input: string): string {
-  const v = input.trim();
+export function normalizeCoverUrl(input: string | null | undefined): string {
+  const v = (input ?? '').trim();
   if (!v) return '';
-  if (!/drive\.google\.com|docs\.google\.com/.test(v)) return v;
-  const m =
-    v.match(/\/file\/d\/([\w-]+)/) ||
-    v.match(/[?&]id=([\w-]+)/);
-  return m ? thumbUrl(m[1], 1600) : v;
+  if (!/drive\.google\.com|docs\.google\.com|drive\.usercontent\.google\.com/.test(v)) {
+    return v;
+  }
+  const m = v.match(/\/file\/d\/([\w-]+)/) || v.match(/[?&]id=([\w-]+)/);
+  return m ? `https://lh3.googleusercontent.com/d/${m[1]}=w1600` : v;
 }
 
 export function thumbUrl(id: string, size = 1000): string {
