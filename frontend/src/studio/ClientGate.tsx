@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
+import { SocialIcons } from './SocialIcons';
+import { useAlbumCover } from './useAlbumCover';
 import type { Album } from './types';
 
 interface ClientGateProps {
@@ -10,6 +12,7 @@ interface ClientGateProps {
 export function ClientGate({ album, onUnlock }: ClientGateProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const cover = useAlbumCover(album);
 
   // Reset the field whenever the album being gated changes.
   useEffect(() => {
@@ -19,7 +22,9 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (password === album.password) {
+    // Compare whitespace-trimmed so stray spaces from typing/pasting on either
+    // side don't cause a false mismatch.
+    if (password.trim() === (album.password ?? '').trim()) {
       setError('');
       onUnlock();
     } else {
@@ -31,9 +36,18 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
 
   return (
     <section id="clientGate">
-      <div className="gateBg" />
+      <div
+        className="gateBg"
+        style={
+          cover
+            ? {
+                backgroundImage: `linear-gradient(#0710084d,#07100866), url('${cover}')`,
+              }
+            : undefined
+        }
+      />
       <div className="gateInner">
-        <BrandMark />
+        <BrandMark src="/logotrans.png" imgClassName="gateLogo" />
         <div className="eyebrow">A STORY IN EVERY FRAME</div>
         <h1 className="script">{album.name}</h1>
         <div className="subtitle">{album.subtitle}</div>
@@ -58,20 +72,7 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
           </button>
           <div className="gateError">{error}</div>
         </form>
-        <div className="socials gateSocial">
-          <button className="social" title="Instagram">
-            ◎
-          </button>
-          <button className="social" title="WhatsApp">
-            ◉
-          </button>
-          <button className="social" title="Facebook">
-            f
-          </button>
-          <button className="social" title="Pinterest">
-            ℗
-          </button>
-        </div>
+        <SocialIcons className="gateSocial" />
       </div>
     </section>
   );

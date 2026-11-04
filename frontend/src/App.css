@@ -131,9 +131,6 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 1.07fr;
   background: white;
-  padding: 6px;
-  border: 1px solid #d9dce4;
-  border-radius: 8px;
   overflow: hidden;
 }
 .loginBrand {
@@ -161,7 +158,7 @@ button:disabled {
 .brandUrl {
   letter-spacing: 5px;
   font-size: 12px;
-  margin-top: 40px;
+  margin-top: 18px;
 }
 .loginFormWrap {
   display: flex;
@@ -206,6 +203,14 @@ button:disabled {
   padding: 14px;
   margin-top: 26px;
   color: #252c3a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.googleBtn svg {
+  flex-shrink: 0;
 }
 .demo {
   color: #969eae;
@@ -232,8 +237,14 @@ button:disabled {
   padding: 28px 22px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   background: #f8f8f6;
+  /* Pin the sidebar to the viewport so the bottom (name / email / logout)
+     stays visible while the main content scrolls. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
 }
 .sideLogo {
   width: 84px;
@@ -423,10 +434,11 @@ button:disabled {
 .gateBg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(#071008a8, #071008b8),
-    url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=85')
-      center/cover;
-  filter: saturate(0.8);
+  background-image: linear-gradient(#0710084d, #07100866),
+    url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=85');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 .gateInner {
   z-index: 1;
@@ -518,15 +530,17 @@ button:disabled {
   gap: 18px;
 }
 .clientHero {
-  height: 280px;
+  height: 440px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   position: relative;
-  background: linear-gradient(#06080591, #060805a8),
-    url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2000&q=85')
-      center 42%/cover;
+  background-image: linear-gradient(#0608053d, #06080561),
+    url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2000&q=85');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 .clientHero h1 {
   font-size: clamp(45px, 6vw, 76px);
@@ -623,7 +637,7 @@ button:disabled {
 }
 .photoGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   gap: 15px;
 }
 .photoCard {
@@ -634,19 +648,21 @@ button:disabled {
 }
 .photoThumb {
   position: relative;
-  aspect-ratio: 4/3;
+  background: #0d0e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Show the whole photo (no crop); cap height so landscape shots at
+     1-per-row don't become enormous. */
+  max-height: 78vh;
   overflow: hidden;
-  background: #222;
 }
 .photoThumb img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 78vh;
+  object-fit: contain;
   display: block;
-  transition: transform 0.35s;
-}
-.photoCard:hover .photoThumb img {
-  transform: scale(1.035);
 }
 .zoomBtn {
   position: absolute;
@@ -822,7 +838,7 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .photoGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(min(var(--cols, 4), 3), minmax(0, 1fr));
   }
   .adminMain {
     padding: 28px 24px;
@@ -854,43 +870,73 @@ button:disabled {
   #adminView {
     grid-template-columns: 1fr;
   }
+  /* Sidebar becomes: a plain TOP logo header + a fixed WHITE BOTTOM tab bar. */
   .sidebar {
-    min-height: auto;
-    padding: 12px 14px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    overflow: auto;
+    display: contents; /* let logo + nav position independently */
   }
-  .sideLogo {
-    width: 48px;
-    height: 48px;
+  .sideLogo,
+  .sideLogo--image {
+    position: static;
+    width: 100%;
+    height: auto;
     margin: 0;
-    flex-shrink: 0;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    align-items: center;
   }
   .sideLogo .brandMark {
     font-size: 19px;
   }
-  .nav {
-    flex-direction: row;
-    gap: 4px;
+  .sideLogoImg {
+    width: 78px;
   }
-  .nav button {
-    padding: 10px;
-    font-size: 12px;
+  .nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    background: #ffffff;
+    border-top: 1px solid #e6e6e6;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+  }
+  .nav button,
+  #adminView[data-theme='modern'] .nav button {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    padding: 7px 2px;
+    font-size: 10px;
+    color: #555;
+    border-radius: 8px;
     white-space: nowrap;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+  .nav button.active,
+  #adminView[data-theme='modern'] .nav button.active {
+    background: #111;
+    color: #fff;
   }
   .nav .ico {
-    display: none;
+    display: block;
+    font-size: 16px;
+    width: auto;
   }
   .sideBottom {
     display: none;
   }
   .adminMain {
-    padding: 22px 14px;
+    /* Leave room for the fixed bottom tab bar. */
+    padding: 18px 14px calc(82px + env(safe-area-inset-bottom));
   }
   .topline h1 {
     font-size: 28px;
@@ -926,17 +972,11 @@ button:disabled {
   .clientHeader {
     padding: 13px 4%;
   }
-  .clientHeadRight .socials {
-    display: none;
-  }
   .clientBrand .brandMark {
     font-size: 22px;
   }
-  .clientBrand .brandName {
-    font-size: 12px;
-  }
   .clientHero {
-    height: 230px;
+    height: 300px;
   }
   .clientBody {
     padding: 24px 4% 45px;
@@ -949,7 +989,7 @@ button:disabled {
     font-size: 24px;
   }
   .photoGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(min(var(--cols, 4), 2), minmax(0, 1fr));
     gap: 9px;
   }
   .photoMeta {
@@ -983,7 +1023,7 @@ button:disabled {
 }
 @media (max-width: 400px) {
   .photoGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(min(var(--cols, 2), 2), minmax(0, 1fr));
   }
   .markBtn {
     font-size: 9px;
@@ -997,5 +1037,1038 @@ button:disabled {
   }
   .loginActions .btn {
     width: 100%;
+  }
+}
+
+/* Create-album form — "Edit Album" style (white inputs, grouped sections) */
+.formCard {
+  padding: 28px 30px 34px;
+}
+.createForm .field input {
+  background: #fff;
+  border: 1px solid #e3e5ea;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.createForm .field input::placeholder {
+  color: #aeb3bd;
+}
+.createForm .field input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px #c7a15b22;
+}
+.createForm .field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2430;
+}
+.formSection {
+  border: 1px solid #e6e8ec;
+  border-radius: 10px;
+  padding: 10px 18px 18px;
+  margin: 22px 0;
+  background: #fcfcfb;
+}
+.formSectionLabel {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  color: #9aa0ad;
+  margin-top: 8px;
+}
+.createForm .btn.goldbtn {
+  margin-top: 6px;
+}
+
+/* ---- Albums card grid (admin) ---- */
+.albumSearch {
+  width: 100%;
+  max-width: 480px;
+  padding: 13px 16px;
+  border: 1px solid #e3e5ea;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 24px;
+  outline: none;
+}
+.albumSearch:focus {
+  border-color: var(--gold);
+}
+.albumCard.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.albumCard.clickable:hover {
+  box-shadow: 0 10px 30px #0000001a;
+  transform: translateY(-2px);
+}
+.albumCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.statusPill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.statusPill.done {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.statusPill.active {
+  background: #fff4df;
+  color: #9a6b17;
+}
+.statusPill.idle {
+  background: #f0f0ee;
+  color: #777;
+}
+
+/* ---- Album detail ---- */
+.backLink {
+  background: none;
+  border: 0;
+  color: #555;
+  font-size: 14px;
+  padding: 0 0 18px;
+}
+.backLink:hover {
+  color: #111;
+}
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.detailMain {
+  overflow: hidden;
+}
+.detailCover {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  display: block;
+}
+.detailBody {
+  padding: 24px 28px 28px;
+}
+.detailTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.detailName {
+  font-size: 30px;
+  font-weight: 700;
+  margin: 0;
+}
+.detailSubtitle {
+  color: #777;
+  margin: 4px 0 0;
+}
+.detailStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 24px 0 10px;
+}
+.detailStatLabel {
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  color: #9aa0ad;
+  font-weight: 600;
+}
+.detailStatValue {
+  font-size: 19px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0 24px;
+}
+.detailDelete {
+  color: #d93025;
+  border-color: #f0c4c0;
+}
+.detailExport {
+  border-top: 1px solid #eee;
+  padding-top: 18px;
+}
+.detailExportRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.countPill.light {
+  border-color: #e3e5ea;
+  color: #555;
+}
+.countPill.light b {
+  color: #111;
+}
+
+.detailSide {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.detailCard {
+  padding: 22px 22px 24px;
+}
+.detailCardTitle {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+.shareRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.shareRow input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e3e5ea;
+  border-radius: 8px;
+  background: #fafafa;
+  font-size: 13px;
+  outline: none;
+}
+.detailQr {
+  display: block;
+  margin-top: 10px;
+  border-radius: 8px;
+}
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 16px;
+}
+
+@media (max-width: 980px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .detailStats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .detailName {
+    font-size: 24px;
+  }
+}
+
+/* =====================================================================
+   ADMIN PANEL — theme: modern  (scoped to [data-theme="modern"])
+   Design tokens + Inter typography per the studio design system.
+   ===================================================================== */
+#adminView[data-theme='modern'] {
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --text: #1c1c1c;
+  --muted: #8a8a8a;
+  --accent: #111111;
+  --accent-contrast: #ffffff;
+  --card-radius: 0.5rem;
+  --card-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.15);
+  --heading-font: 'Inter', system-ui, sans-serif;
+  --body-font: 'Inter', system-ui, -apple-system, sans-serif;
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body-font);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+#adminView[data-theme='modern'] h1,
+#adminView[data-theme='modern'] h2,
+#adminView[data-theme='modern'] h3,
+#adminView[data-theme='modern'] .sectionTitle,
+#adminView[data-theme='modern'] .detailName,
+#adminView[data-theme='modern'] .detailCardTitle {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Type scale */
+#adminView[data-theme='modern'] .topline h1 {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .sectionTitle {
+  font-size: 1.25rem; /* 20px */
+}
+#adminView[data-theme='modern'] .detailCardTitle {
+  font-size: 1.25rem;
+}
+#adminView[data-theme='modern'] .detailName {
+  font-size: 1.875rem;
+}
+#adminView[data-theme='modern'] .stat strong,
+#adminView[data-theme='modern'] .detailStatValue {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .detailStatValue {
+  font-size: 1.125rem;
+}
+#adminView[data-theme='modern'] .stat .label,
+#adminView[data-theme='modern'] .detailStatLabel,
+#adminView[data-theme='modern'] .formSectionLabel {
+  font-size: 0.75rem; /* 12px */
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+#adminView[data-theme='modern'] .muted,
+#adminView[data-theme='modern'] .tiny,
+#adminView[data-theme='modern'] .albumMeta,
+#adminView[data-theme='modern'] .albumInfo p,
+#adminView[data-theme='modern'] .detailSubtitle {
+  color: var(--muted);
+}
+
+/* Surfaces / cards */
+#adminView[data-theme='modern'] {
+  /* sidebar + main inherit --bg */
+}
+#adminView[data-theme='modern'] .sidebar {
+  background: var(--surface);
+  border-right: 1px solid #ececea;
+}
+#adminView[data-theme='modern'] .panel,
+#adminView[data-theme='modern'] .adminTable {
+  background: var(--surface);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+#adminView[data-theme='modern'] .detailCover {
+  border-top-left-radius: var(--card-radius);
+  border-top-right-radius: var(--card-radius);
+}
+
+/* Nav */
+#adminView[data-theme='modern'] .nav button {
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #3a3a3a;
+  border-radius: var(--card-radius);
+}
+#adminView[data-theme='modern'] .nav button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Buttons — 14px / medium / rounded-lg */
+#adminView[data-theme='modern'] .btn {
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--card-radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  letter-spacing: 0;
+}
+#adminView[data-theme='modern'] .btn.goldbtn {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+#adminView[data-theme='modern'] .btn.outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #dcdcd8;
+}
+#adminView[data-theme='modern'] .btn.outline:hover {
+  background: #f0f0ee;
+}
+#adminView[data-theme='modern'] .btn.danger,
+#adminView[data-theme='modern'] .detailDelete {
+  background: transparent;
+  color: #d93025;
+  border: 1px solid #f0c4c0;
+}
+#adminView[data-theme='modern'] .btn.danger {
+  background: #d93025;
+  color: #fff;
+  border: 0;
+}
+
+/* Inputs */
+#adminView[data-theme='modern'] .field input,
+#adminView[data-theme='modern'] .albumSearch,
+#adminView[data-theme='modern'] .shareRow input,
+#adminView[data-theme='modern'] .toolbar input {
+  font-family: var(--body-font);
+  background: #fff;
+  border: 1px solid #e3e3e0;
+  border-radius: var(--card-radius);
+  color: var(--text);
+}
+#adminView[data-theme='modern'] .field input:focus,
+#adminView[data-theme='modern'] .albumSearch:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+#adminView[data-theme='modern'] .field label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Status pills keep semantic colors; align radius */
+#adminView[data-theme='modern'] .statusPill {
+  border-radius: 999px;
+}
+
+/* Section card used in create/edit form */
+#adminView[data-theme='modern'] .formSection {
+  background: #fafafa;
+  border-color: #ececea;
+  border-radius: var(--card-radius);
+}
+
+/* Tighter admin spacing (modern theme) */
+#adminView[data-theme='modern'] .nav {
+  gap: 2px;
+}
+#adminView[data-theme='modern'] .nav button {
+  padding: 10px 14px;
+}
+#adminView[data-theme='modern'] .stats {
+  margin-bottom: 22px;
+}
+#adminView[data-theme='modern'] .sectionTitle {
+  margin-bottom: 14px;
+}
+
+/* ---- Staff page ---- */
+.staffToolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.staffToolbar .albumSearch {
+  margin-bottom: 0;
+  max-width: 360px;
+}
+.staffFilter {
+  padding: 13px 14px;
+  border: 1px solid #e3e3e0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #1c1c1c;
+  outline: none;
+}
+.staffFilter:focus {
+  border-color: #111;
+}
+.staffList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.staffRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+.staffName {
+  font-weight: 600;
+  font-size: 15px;
+}
+.staffEmail {
+  color: #8a8a8a;
+  font-size: 13px;
+  margin-top: 2px;
+}
+.staffActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.staffDelete {
+  color: #d93025;
+  border-color: #f0c4c0 !important;
+}
+
+@media (max-width: 640px) {
+  .staffRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .staffActions {
+    width: 100%;
+  }
+}
+
+/* ---- Profile page ---- */
+.profilePage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.profileCard {
+  padding: 24px 26px 26px;
+}
+.profileCardTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 18px;
+}
+.profileAccount {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.profileAccountValue {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.profilePhotoRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #d9d9d6;
+  color: #555;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.profileCard form .btn {
+  margin-top: 4px;
+}
+
+/* Social icons render as anchors on client pages */
+a.social {
+  text-decoration: none;
+}
+
+/* Settings account grid */
+.settingsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.settingsAccount {
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+}
+
+/* ---- Selected photos (admin album detail) ---- */
+.detailSelected {
+  margin-top: 18px;
+}
+.selectedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.filterButtons.light .filterBtn {
+  background: #fff;
+  color: #555;
+  border: 1px solid #e3e3e0;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.filterButtons.light .filterBtn.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.selectedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+.selectedCard {
+  margin: 0;
+  position: relative;
+  border: 1px solid #ececea;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #faf9f7;
+}
+.selectedCard img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: #eee;
+}
+.selectedCard figcaption {
+  font-size: 11px;
+  color: #777;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selTag {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #fff;
+}
+.selTag.bride {
+  background: #8d5b77;
+}
+.selTag.groom {
+  background: #365e75;
+}
+.selTag.both {
+  background: #b08b3e;
+  color: #15110b;
+}
+
+/* ---- Image logos ---- */
+.brandLogo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Login split-screen: transparent logo centered on the black panel */
+.loginLogo {
+  width: min(32%, 150px);
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Admin sidebar wordmark (no white box when using an image) */
+.sideLogo--image {
+  width: auto;
+  height: auto;
+  background: transparent;
+  display: block;
+  place-items: initial;
+  margin-bottom: 14px;
+}
+.sideLogoImg {
+  display: block;
+  width: 110px;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  .sideLogoImg {
+    width: 80px;
+  }
+}
+
+/* Client-page logo images */
+.gateLogo {
+  width: min(34%, 140px);
+  height: auto;
+  margin: 0 auto 24px;
+}
+a.clientBrand {
+  text-decoration: none;
+}
+.headerLogo {
+  width: 54px;
+  height: auto;
+}
+.footerLogo {
+  width: 70px;
+  height: auto;
+  margin: 0 auto 12px;
+}
+
+/* =====================================================================
+   Client album header — akhila theme spec
+   ===================================================================== */
+#clientView {
+  --accent: #d9ad60;
+  --surface: #17130d;
+}
+#clientView .clientHeader {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #28251e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 16px;
+}
+#clientView .clientBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#clientView .headerLogo {
+  height: 38px;
+  width: auto;
+}
+#clientView .clientBrand .brandName {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  color: var(--accent);
+  letter-spacing: 0.025em;
+  line-height: 1.3;
+  padding-bottom: 2px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#clientView .clientHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#clientView .clientHeadRight .social {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 50%;
+}
+
+@media (min-width: 640px) {
+  #clientView .clientHeader {
+    gap: 12px;
+    padding: 12px 24px;
+  }
+  #clientView .headerLogo {
+    height: 52px;
+  }
+  #clientView .clientBrand .brandName {
+    font-size: 1rem;
+  }
+  #clientView .clientHeadRight {
+    gap: 8px;
+  }
+  #clientView .clientHeadRight .social {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
+@media (min-width: 1024px) {
+  #clientView .headerLogo {
+    height: 60px;
+  }
+  #clientView .clientBrand .brandName {
+    font-size: 1.15rem;
+  }
+}
+
+/* Drive connection diagnostic on album detail */
+.driveStatus {
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 10px 13px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  border: 1px solid transparent;
+}
+.driveStatus.checking {
+  background: #f3f4f6;
+  color: #555;
+}
+.driveStatus.ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #c7e6c9;
+}
+.driveStatus.warn {
+  background: #fff4df;
+  color: #8a5a12;
+  border-color: #f0dcae;
+}
+.driveStatus.bad {
+  background: #fdecea;
+  color: #b3261e;
+  border-color: #f3c4bf;
+}
+.driveHint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Cover image placeholders (neutral bg while loading / if missing) */
+.albumCard img,
+.detailCover {
+  background: #ece9e3;
+  color: transparent;
+}
+
+/* Cover placeholder (shown when no cover image yet) */
+.coverPlaceholder {
+  background: #ece9e3;
+  display: grid;
+  place-items: center;
+  color: #a7a29a;
+  font-size: 13px;
+}
+.cardCoverPlaceholder {
+  height: 180px;
+}
+.detailCover.coverPlaceholder {
+  height: 300px;
+}
+
+/* Selected-photo cards are now links that open the full image */
+a.selectedCard {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+a.selectedCard .viewHint {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  background: #080908cc;
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+a.selectedCard:hover .viewHint {
+  opacity: 1;
+}
+a.selectedCard figcaption {
+  font-size: 11px;
+  color: #777;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Gallery toolbar: layout (per-row) control */
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.layoutButtons {
+  display: flex;
+  gap: 6px;
+}
+.layoutBtn {
+  background: transparent;
+  color: #c6c0b5;
+  border: 1px solid #38342b;
+  padding: 7px 11px;
+  font-size: 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.layoutBtn svg {
+  display: block;
+}
+.layoutBtn.active {
+  background: #c7a15b;
+  color: #100e08;
+  border-color: #c7a15b;
+}
+
+@media (max-width: 760px) {
+  .toolbarRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Per-photo download button (client gallery) */
+.dlBtn {
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  border: 1px solid #ffffff90;
+  background: #080908aa;
+  color: #fff;
+  border-radius: 50%;
+  width: 33px;
+  height: 33px;
+  font-size: 15px;
+  display: grid;
+  place-items: center;
+}
+.dlBtn:hover {
+  background: #c7a15b;
+  color: #100e08;
+  border-color: #c7a15b;
+}
+
+/* Per-row-count max heights so multi-column grids stay tidy while still
+   showing the full (uncropped) photo. */
+.photoGrid.cols-1 .photoThumb,
+.photoGrid.cols-1 .photoThumb img {
+  max-height: 80vh;
+}
+.photoGrid.cols-2 .photoThumb,
+.photoGrid.cols-2 .photoThumb img {
+  max-height: 60vh;
+}
+.photoGrid.cols-4 .photoThumb,
+.photoGrid.cols-4 .photoThumb img {
+  max-height: 340px;
+}
+/* Let cards size to their content so varied photo ratios sit naturally. */
+.photoGrid {
+  align-items: start;
+}
+
+/* ------------------------------------------------------------------
+   Mobile admin chrome — compact sticky header (logo + Logout) and an
+   icon-only sticky footer nav.
+   ------------------------------------------------------------------ */
+.mobileLogout {
+  display: none; /* desktop uses the sidebar Logout instead */
+}
+
+@media (max-width: 760px) {
+  /* Header: compact, sticky, logo LEFT + Logout RIGHT on one row. */
+  .sideLogo,
+  .sideLogo--image {
+    position: sticky !important;
+    top: 0;
+    z-index: 40;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    padding: 8px 18px;
+    background: #ffffff;
+    border-bottom: 1px solid #ececec;
+    min-height: 54px;
+  }
+  .sideLogoImg {
+    width: 62px !important;
+    height: auto;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .mobileLogout {
+    display: inline-block;
+    margin-left: auto; /* push to the far right */
+    background: none;
+    border: 0;
+    color: #d93025;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 6px 0;
+    white-space: nowrap;
+  }
+
+  /* Footer: icon + label under it, sticky, evenly spaced. */
+  .nav,
+  #adminView[data-theme='modern'] .nav {
+    justify-content: space-around;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
+    background: #ffffff;
+    border-top: 1px solid #e6e6e6;
+    box-shadow: none;
+  }
+  .nav button,
+  #adminView[data-theme='modern'] .nav button {
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0 6px;
+    background: transparent;
+    color: #333;
+    border-radius: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav .navLabel {
+    display: block; /* label shown under each icon */
+    font-size: 11px;
+    line-height: 1.1;
+    font-weight: 500;
+    color: inherit;
+    white-space: nowrap;
+  }
+  .nav .ico {
+    display: block;
+    font-size: 20px;
+    line-height: 1;
+    width: auto;
+  }
+  /* Active = just a stronger, darker icon with a thin top indicator. */
+  .nav button.active,
+  #adminView[data-theme='modern'] .nav button.active {
+    background: transparent;
+    color: #111;
+    box-shadow: inset 0 2px 0 #111;
+  }
+  .adminMain {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }

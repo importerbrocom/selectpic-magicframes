@@ -34,6 +34,33 @@ src/
 Opening `#client-<albumId>` (e.g. the link copied from the admin **Manage**
 modal) jumps straight to that album's password gate.
 
+### Google Drive photos (no backend)
+
+Albums can pull their photos straight from a **public Google Drive folder**,
+read in the browser with a Drive API key — no Laravel backend required.
+
+- When creating an album, paste the **parent Drive folder link** into
+  *PHOTO GALLERY → Google Drive Folder Link*.
+- Each **sub-folder** of that parent becomes an **event tab** (Haldi,
+  Engagement, Wedding…). If there are no sub-folders, all images in the parent
+  show under a single "All Photos" tab.
+- The folder **and its photos must be shared as "Anyone with the link"** — an
+  API key can only read public files.
+
+Set the key at build time in `frontend/.env`:
+
+```dotenv
+VITE_GOOGLE_API_KEY=your-drive-api-key
+```
+
+Requirements for the key (Google Cloud Console):
+- The **Google Drive API** must be enabled for the key's project.
+- If the key has an **HTTP-referrer restriction**, add your site's domain
+  (e.g. `selectpic-magicframes.nokkoo.in/*`) to the allowed referrers.
+
+Albums created **without** a Drive link fall back to the bundled demo photos,
+so the UI still works out of the box.
+
 ### Fonts
 
 The theme loads **DM Sans**, **Playfair Display**, and **Great Vibes** from

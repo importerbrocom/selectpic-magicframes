@@ -22,11 +22,13 @@ class ImageSelectionController extends Controller
             'data' => [
                 'bride' => $selections->where('choice', 'bride')->values(),
                 'groom' => $selections->where('choice', 'groom')->values(),
+                'both' => $selections->where('choice', 'both')->values(),
             ],
             'meta' => [
                 'project_id' => $project->id,
                 'bride_count' => $selections->where('choice', 'bride')->count(),
                 'groom_count' => $selections->where('choice', 'groom')->count(),
+                'both_count' => $selections->where('choice', 'both')->count(),
             ],
         ]);
     }
@@ -44,15 +46,16 @@ class ImageSelectionController extends Controller
             'file_id' => ['required', 'string', 'max:255'],
             'file_name' => ['nullable', 'string', 'max:255'],
             'thumbnail_link' => ['nullable', 'string'],
-            'choice' => ['required', Rule::in(['bride', 'groom'])],
+            'choice' => ['required', Rule::in(['bride', 'groom', 'both'])],
         ]);
 
+        // One selection per photo: a photo is marked bride, groom, or both.
         $existing = $project->selections()
             ->where('file_id', $data['file_id'])
-            ->where('choice', $data['choice'])
             ->first();
 
-        if ($existing) {
+        // Clicking the same choice again clears the selection (toggle off).
+        if ($existing && $existing->choice === $data['choice']) {
             $existing->delete();
 
             return response()->json([
@@ -61,11 +64,21 @@ class ImageSelectionController extends Controller
             ]);
         }
 
-        $selection = $project->selections()->create($data);
+        // Otherwise set/replace this photo's choice.
+        if ($existing) {
+            $existing->update([
+                'choice' => $data['choice'],
+                'file_name' => $data['file_name'] ?? $existing->file_name,
+                'thumbnail_link' => $data['thumbnail_link'] ?? $existing->thumbnail_link,
+            ]);
+            $selection = $existing;
+        } else {
+            $selection = $project->selections()->create($data);
+        }
 
         return response()->json([
             'data' => $selection,
-            'meta' => ['action' => 'added'],
+            'meta' => ['action' => 'saved'],
         ], 201);
     }
 

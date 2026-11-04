@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import { BrandMark } from './BrandMark';
-import { photos } from './data';
+import { SocialIcons } from './SocialIcons';
 import { selectionCounts } from './helpers';
+import { useDriveGallery } from './useDriveGallery';
+import { useAlbumCover } from './useAlbumCover';
+import { bestImageUrl, downloadSelectedZip } from './drive';
+import type { DrivePhoto } from './drive';
 import type { Album, PhotoFilter, SelectionType } from './types';
 
 interface ClientViewProps {
   album: Album;
   onMark: (photoId: string, type: SelectionType) => void;
   onSubmit: () => void;
-  onExit: () => void;
   showToast: (msg: string) => void;
 }
 
@@ -28,31 +31,55 @@ export function ClientView({
   album,
   onMark,
   onSubmit,
-  onExit,
   showToast,
 }: ClientViewProps) {
-  const [folder, setFolder] = useState(album.events[0] ?? 'Wedding');
+  const gallery = useDriveGallery(album);
+  const albumCover = useAlbumCover(album);
   const [filter, setFilter] = useState<PhotoFilter>('all');
+  const [columns, setColumns] = useState<1 | 2 | 4>(1);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Request a sharper image when fewer photos share the row.
+  const gridWidth = columns === 1 ? 1600 : columns === 2 ? 1000 : 700;
+  // Downloads are available by default (admin no longer toggles this).
+  const canDownload = album.allowDownload !== false;
+
+  async function downloadOne(p: DrivePhoto) {
+    if (!album.driveFolderId) return;
+    setDownloadingId(p.id);
+    try {
+      await downloadSelectedZip(album.name, 'photo', [
+        { file_id: p.id, file_name: p.name },
+      ]);
+    } catch (e) {
+      showToast((e as Error).message);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
   const [zoomId, setZoomId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-
-  // Keep the active folder valid for this album.
-  const activeFolder = album.events.includes(folder)
-    ? folder
-    : (album.events[0] ?? 'Wedding');
 
   const counts = selectionCounts(album);
   const total = counts.bride + counts.groom + counts.both;
 
+  const activeFolderName =
+    gallery.folders.find((f) => f.id === gallery.activeFolderId)?.name ?? '';
+
+  // Hero background: resolved album cover, else the first loaded gallery photo.
+  const heroImage = albumCover || gallery.photos[0]?.url || '';
+
   const visiblePhotos = useMemo(() => {
-    let list = photos.filter((p) => p.folder === activeFolder);
+    let list = gallery.photos;
     if (filter === 'selected') list = list.filter((p) => album.selections[p.id]);
     if (filter === 'unselected')
       list = list.filter((p) => !album.selections[p.id]);
     return list;
-  }, [activeFolder, filter, album.selections]);
+  }, [gallery.photos, filter, album.selections]);
 
-  const zoomPhoto = zoomId ? photos.find((p) => p.id === zoomId) ?? null : null;
+  const zoomPhoto: DrivePhoto | null = zoomId
+    ? (gallery.photos.find((p) => p.id === zoomId) ?? null)
+    : null;
 
   function handleSubmit() {
     if (album.locked) return;
@@ -71,24 +98,30 @@ export function ClientView({
   return (
     <section id="clientView">
       <header className="clientHeader">
-        <div className="clientBrand">
-          <BrandMark full={false} />
-          <div className="brandName">MAGIC FRAMES</div>
-        </div>
+        <a
+          className="clientBrand"
+          href="https://magicframes.co.in"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <BrandMark src="/logotrans.png" imgClassName="headerLogo" />
+          <div className="brandName">magicframes.co.in</div>
+        </a>
         <div className="clientHeadRight">
-          <div className="socials">
-            <button className="social">◎</button>
-            <button className="social">◉</button>
-            <button className="social">f</button>
-            <button className="social">℗</button>
-          </div>
-          <button className="btn outline small" onClick={onExit}>
-            Exit album
-          </button>
+          <SocialIcons />
         </div>
       </header>
 
-      <div className="clientHero">
+      <div
+        className="clientHero"
+        style={
+          heroImage
+            ? {
+                backgroundImage: `linear-gradient(#06080591,#060805a8), url('${heroImage}')`,
+              }
+            : undefined
+        }
+      >
         <div>
           <div className="eyebrow">A STORY IN EVERY FRAME</div>
           <h1 className="script">{album.name}</h1>
@@ -128,42 +161,73 @@ export function ClientView({
           </div>
         </div>
 
+        {gallery.error && (
+          <div className="lockBanner" style={{ borderColor: '#7a3b3b', color: '#e6a0a0', background: '#211313' }}>
+            Could not load photos from Google Drive: {gallery.error}
+          </div>
+        )}
+
         <div className="folderBar">
-          {album.events.map((f) => (
-            <button
-              key={f}
-              className={'folderTab' + (f === activeFolder ? ' active' : '')}
-              onClick={() => setFolder(f)}
-            >
-              {f}{' '}
-              <span style={{ opacity: 0.7 }}>
-                ({photos.filter((p) => p.folder === f).length})
-              </span>
-            </button>
-          ))}
+          {gallery.loadingFolders ? (
+            <span className="muted tiny">Loading events…</span>
+          ) : gallery.folders.length === 0 ? (
+            <span className="muted tiny">No event folders found.</span>
+          ) : (
+            gallery.folders.map((f) => (
+              <button
+                key={f.id}
+                className={
+                  'folderTab' + (f.id === gallery.activeFolderId ? ' active' : '')
+                }
+                onClick={() => gallery.setActiveFolderId(f.id)}
+              >
+                {f.name}
+              </button>
+            ))
+          )}
         </div>
 
         <div className="galleryToolbar">
-          <h3>{activeFolder} photographs</h3>
-          <div className="filterButtons">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                className={'filterBtn' + (filter === f.key ? ' active' : '')}
-                onClick={() => setFilter(f.key)}
-              >
-                {f.label}
-              </button>
-            ))}
+          <h3>{activeFolderName ? activeFolderName + ' photographs' : 'Photographs'}</h3>
+          <div className="toolbarRight">
+            <div className="layoutButtons" title="Photos per row">
+              {([1, 2, 4] as const).map((n) => (
+                <button
+                  key={n}
+                  className={'layoutBtn' + (columns === n ? ' active' : '')}
+                  onClick={() => setColumns(n)}
+                  aria-label={n + ' per row'}
+                  title={n + ' per row'}
+                >
+                  <LayoutIcon cols={n} />
+                  <span>{n}</span>
+                </button>
+              ))}
+            </div>
+            <div className="filterButtons">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  className={'filterBtn' + (filter === f.key ? ' active' : '')}
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="photoGrid">
-          {visiblePhotos.length === 0 ? (
-            <div
-              className="empty"
-              style={{ gridColumn: '1/-1', color: '#aaa' }}
-            >
+        <div
+          className={'photoGrid cols-' + columns}
+          style={{ ['--cols' as string]: String(columns) }}
+        >
+          {gallery.loadingPhotos ? (
+            <div className="empty" style={{ gridColumn: '1/-1', color: '#aaa' }}>
+              Loading photos…
+            </div>
+          ) : visiblePhotos.length === 0 ? (
+            <div className="empty" style={{ gridColumn: '1/-1', color: '#aaa' }}>
               No photos in this view yet.
             </div>
           ) : (
@@ -175,7 +239,27 @@ export function ClientView({
                   key={p.id}
                 >
                   <div className="photoThumb">
-                    <img src={p.url} alt={p.name} loading="lazy" />
+                    <img
+                      src={
+                        album.driveFolderId
+                          ? bestImageUrl(p, gridWidth)
+                          : (p.thumbnail ?? p.url)
+                      }
+                      alt={p.name}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                    {canDownload && album.driveFolderId && (
+                      <button
+                        className="dlBtn"
+                        aria-label={'Download ' + p.name}
+                        title="Download"
+                        disabled={downloadingId === p.id}
+                        onClick={() => downloadOne(p)}
+                      >
+                        {downloadingId === p.id ? '…' : '⭳'}
+                      </button>
+                    )}
                     <button
                       className="zoomBtn"
                       aria-label={'Zoom ' + p.name}
@@ -240,9 +324,17 @@ export function ClientView({
       </main>
 
       <footer className="clientFooter">
-        <BrandMark full={false} />
+        <BrandMark src="/logotrans.png" imgClassName="footerLogo" />
         <div>
-          Captured with care · <span className="gold">MAGICFRAMES.CO.IN</span>
+          Captured with care ·{' '}
+          <a
+            className="gold"
+            href="https://magicframes.co.in"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            MAGICFRAMES.CO.IN
+          </a>
         </div>
       </footer>
 
@@ -265,7 +357,11 @@ export function ClientView({
                 ×
               </button>
             </div>
-            <img src={zoomPhoto.url} alt={zoomPhoto.name} />
+            <img
+              src={zoomPhoto.url}
+              alt={zoomPhoto.name}
+              referrerPolicy="no-referrer"
+            />
             <div className="zoomCaption">
               <span className="muted">Select this photo for:</span>
               <div className="markRow" style={{ width: 'min(360px,65%)' }}>
@@ -332,5 +428,41 @@ export function ClientView({
         </div>
       )}
     </section>
+  );
+}
+
+/** Small icon showing the per-row layout (1, 2 or 4 cells). */
+function LayoutIcon({ cols }: { cols: 1 | 2 | 4 }) {
+  const common = {
+    width: '15',
+    height: '15',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'aria-hidden': true,
+  };
+  if (cols === 1) {
+    return (
+      <svg {...common}>
+        <rect x="3" y="6" width="18" height="12" rx="1.5" />
+      </svg>
+    );
+  }
+  if (cols === 2) {
+    return (
+      <svg {...common}>
+        <rect x="3" y="6" width="8" height="12" rx="1.5" />
+        <rect x="13" y="6" width="8" height="12" rx="1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <rect x="3" y="4" width="8" height="7" rx="1.2" />
+      <rect x="13" y="4" width="8" height="7" rx="1.2" />
+      <rect x="3" y="13" width="8" height="7" rx="1.2" />
+      <rect x="13" y="13" width="8" height="7" rx="1.2" />
+    </svg>
   );
 }

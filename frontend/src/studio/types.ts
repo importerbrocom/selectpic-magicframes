@@ -13,16 +13,38 @@ export type Selections = Record<string, SelectionType>;
 
 export interface Album {
   id: number;
+  /** Server-assigned URL slug (name-based share link). */
+  slug?: string;
   name: string;
   subtitle: string;
   password: string;
-  events: string[];
+  /** Parent Google Drive folder ID (photos live in its sub-folders). */
+  driveFolderId: string;
+  /** The original Drive link the admin pasted (for display/editing). */
+  driveLink: string;
+  /** Legacy demo folder names; only used by the built-in seed albums. */
+  events?: string[];
   photos: number;
   cover: string;
   status: string;
   views: number;
   locked: boolean;
   selections: Selections;
+  /** ISO timestamp of the last Drive sync, if any. */
+  lastSynced?: string;
+  /** When true, clients can download photos from the client gallery. */
+  allowDownload?: boolean;
+}
+
+export type StaffStatus = 'active' | 'suspended';
+
+export interface StaffMember {
+  id: number;
+  name: string;
+  email: string;
+  /** Demo-only temporary password set at creation / reset. */
+  tempPassword: string;
+  status: StaffStatus;
 }
 
 export type Screen = 'login' | 'admin' | 'clientGate' | 'client';
