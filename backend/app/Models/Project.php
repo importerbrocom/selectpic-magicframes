@@ -25,7 +25,11 @@ class Project extends Model
         'views',
     ];
 
+    /** Never serialized unless an admin endpoint calls makeVisible(). */
+    protected $hidden = ['password'];
+
     protected $casts = [
+        'password' => 'encrypted',
         'locked' => 'boolean',
         'allow_download' => 'boolean',
         'views' => 'integer',

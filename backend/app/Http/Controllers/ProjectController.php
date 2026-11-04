@@ -17,7 +17,8 @@ class ProjectController extends Controller
         $projects = Project::query()
             ->withCount(['brideSelections', 'groomSelections', 'bothSelections'])
             ->latest()
-            ->get();
+            ->get()
+            ->each->makeVisible('password');
 
         return response()->json(['data' => $projects]);
     }
@@ -31,6 +32,7 @@ class ProjectController extends Controller
         $data['slug'] = $this->uniqueSlug($data['name']);
 
         $project = Project::create($data);
+        $project->makeVisible('password');
 
         return response()->json(['data' => $project], 201);
     }
@@ -41,6 +43,7 @@ class ProjectController extends Controller
     public function show(Project $project): JsonResponse
     {
         $project->load(['brideSelections', 'groomSelections', 'bothSelections']);
+        $project->makeVisible('password');
 
         return response()->json(['data' => $project]);
     }
@@ -51,10 +54,12 @@ class ProjectController extends Controller
     public function showBySlug(string $slug): JsonResponse
     {
         $project = Project::where('slug', $slug)->firstOrFail();
-        $project->increment('views');
-        $project->load(['brideSelections', 'groomSelections', 'bothSelections']);
 
-        return response()->json(['data' => $project]);
+        // Only non-secret fields: no password, Drive folder, or selections
+        // until the album is unlocked via AlbumAccessController::unlock.
+        return response()->json(['data' => $project->only([
+            'id', 'slug', 'name', 'subtitle', 'cover', 'locked', 'allow_download',
+        ])]);
     }
 
     /**
@@ -70,6 +75,7 @@ class ProjectController extends Controller
         }
 
         $project->update($data);
+        $project->makeVisible('password');
 
         return response()->json(['data' => $project]);
     }

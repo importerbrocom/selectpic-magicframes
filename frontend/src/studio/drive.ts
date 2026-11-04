@@ -4,6 +4,8 @@
 // read PUBLIC folders — the key can only see folders/files shared as
 // "Anyone with the link". No backend required.
 
+import { authHeader } from './api';
+
 export interface DriveFolder {
   id: string;
   name: string;
@@ -173,6 +175,7 @@ export async function downloadSelectedZip(
   album: string,
   type: string,
   files: ZipFile[],
+  albumId?: number,
 ): Promise<void> {
   if (!BACKEND_BASE) {
     throw new Error(
@@ -182,7 +185,11 @@ export async function downloadSelectedZip(
 
   const res = await fetch(`${BACKEND_BASE}/api/photos/zip`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: '*/*' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: '*/*',
+      ...authHeader(albumId),
+    },
     body: JSON.stringify({ album, type, files }),
   });
 

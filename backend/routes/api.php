@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AlbumAccessController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\ImageSelectionController;
 use App\Http\Controllers\PhotoDownloadController;
@@ -15,19 +17,27 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public album lookup by slug (used by the client share link on any device).
+// --- Public -----------------------------------------------------------
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::get('projects/by-slug/{slug}', [ProjectController::class, 'showBySlug']);
+Route::post('projects/by-slug/{slug}/unlock', [AlbumAccessController::class, 'unlock'])->middleware('throttle:10,1');
 
-// Projects CRUD.
-Route::apiResource('projects', ProjectController::class);
+// --- Admin only -------------------------------------------------------
+Route::middleware(['auth:sanctum', 'abilities:admin'])->group(function () {
+    Route::get('auth/me', [AuthController::class, 'me']);
+    Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::apiResource('projects', ProjectController::class);
+    Route::get('drive/images', [GoogleDriveController::class, 'images']);
+});
 
-// Image selections, scoped to a project so each side is tracked separately.
-Route::get('projects/{project}/selections', [ImageSelectionController::class, 'index']);
-Route::post('projects/{project}/selections', [ImageSelectionController::class, 'store']);
-Route::delete('projects/{project}/selections/{selection}', [ImageSelectionController::class, 'destroy']);
+// --- Admin or a client who unlocked this album ------------------------
+Route::middleware(['auth:sanctum', 'project.access'])->group(function () {
+    Route::get('projects/{project}/selections', [ImageSelectionController::class, 'index']);
+    Route::post('projects/{project}/selections', [ImageSelectionController::class, 'store']);
+    Route::delete('projects/{project}/selections/{selection}', [ImageSelectionController::class, 'destroy']);
+    Route::post('projects/{project}/submit', [AlbumAccessController::class, 'submit']);
+});
 
-// Google Drive image fetching.
-Route::get('drive/images', [GoogleDriveController::class, 'images']);
-
-// Build a ZIP of selected photos (bride/groom/both/all) and stream it back.
-Route::post('photos/zip', [PhotoDownloadController::class, 'zip']);
+// --- Any authenticated album/admin token ------------------------------
+Route::post('photos/zip', [PhotoDownloadController::class, 'zip'])
+    ->middleware(['auth:sanctum', 'ability:admin,album']);

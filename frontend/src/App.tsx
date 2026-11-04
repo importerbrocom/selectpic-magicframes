@@ -125,13 +125,11 @@ export default function App() {
     try {
       if (USE_API && link.slug) {
         const album = await api.getAlbumBySlug(link.slug);
-        const selections = await api.getSelections(album.id).catch(() => ({}));
-        const full = { ...album, selections };
         setAlbums((prev) => {
-          const rest = prev.filter((a) => a.id !== full.id);
-          return [full, ...rest];
+          const rest = prev.filter((a) => a.id !== album.id);
+          return [album, ...rest];
         });
-        setActiveAlbumId(full.id);
+        setActiveAlbumId(album.id);
         setScreen('clientGate');
         return;
       }
@@ -155,10 +153,20 @@ export default function App() {
       return;
     }
     if (USE_API) {
+      if (!api.hasAdminToken()) {
+        setLoading(false);
+        return;
+      }
       api
-        .listAlbums()
-        .then((list) => setAlbums(list))
-        .catch(() => showToast('Could not reach the server; working offline.'))
+        .me()
+        .then(() => api.listAlbums())
+        .then((list) => {
+          setAlbums(list);
+          setScreen('admin');
+        })
+        .catch(() => {
+          /* invalid/expired token: stay on login */
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -166,7 +174,18 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleLogin(email: string, password: string) {
+  async function handleLogin(email: string, password: string) {
+    if (USE_API) {
+      try {
+        await api.login(email, password);
+        setAlbums(await api.listAlbums());
+        setScreen('admin');
+        showToast('Welcome to Magic Frames Studio');
+      } catch (e) {
+        showToast((e as Error).message);
+      }
+      return;
+    }
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       setScreen('admin');
       showToast('Welcome to Magic Frames Studio');
@@ -174,6 +193,24 @@ export default function App() {
       showToast('Invalid demo credentials. Use admin@magicframes.test / password.');
     }
   }
+
+  async function handleLogout() {
+    if (USE_API) {
+      await api.logout();
+      api.clearAlbumTokens();
+      setAlbums([]);
+    }
+    setScreen('login');
+  }
+
+  // Any expired/revoked token sends the user back to the right entry screen.
+  useEffect(() => {
+    function onUnauthorized() {
+      setScreen((s) => (s === 'admin' ? 'login' : s));
+    }
+    window.addEventListener('mf:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('mf:unauthorized', onUnauthorized);
+  }, []);
 
   function openClientGate(id: number) {
     setActiveAlbumId(id);
@@ -252,9 +289,23 @@ export default function App() {
     setStaff((prev) => prev.filter((s) => s.id !== id));
   }
 
-  function handleClientUnlock() {
-    if (!activeAlbum) return;
-    setScreen('client');
+  async function handleClientUnlock(password: string): Promise<string | null> {
+    if (!activeAlbum) return 'This album is not available.';
+    if (USE_API && activeAlbum.slug) {
+      try {
+        const full = await api.unlockAlbum(activeAlbum.slug, password);
+        setAlbums((prev) => prev.map((a) => (a.id === full.id ? { ...a, ...full } : a)));
+        setScreen('client');
+        return null;
+      } catch (e) {
+        return (e as Error).message;
+      }
+    }
+    if (password.trim() === (activeAlbum.password ?? '').trim()) {
+      setScreen('client');
+      return null;
+    }
+    return 'That password does not match this private album. Please try again.';
   }
 
   function handleMark(photoId: string, type: SelectionType) {
@@ -277,17 +328,35 @@ export default function App() {
     if (USE_API) {
       // The backend toggles: calling with the same choice removes it. We always
       // send the clicked choice, which matches the toggle semantics.
-      api.saveSelection(albumId, photoId, type).catch(() => {});
+      api.saveSelection(albumId, photoId, type).catch((e: Error) => {
+        showToast(e.message);
+        api
+          .getSelections(albumId)
+          .then((selections) =>
+            setAlbums((prev) =>
+              prev.map((a) => (a.id === albumId ? { ...a, selections } : a)),
+            ),
+          )
+          .catch(() => {});
+      });
     }
     void nextChoice;
   }
 
   function handleSubmitSelections() {
     if (!activeAlbum) return;
-    handleUpdateAlbum(activeAlbum.id, {
-      locked: true,
-      status: 'Selections submitted',
-    });
+    const id = activeAlbum.id;
+    const patch = { locked: true, status: 'Selections submitted' as const };
+    if (USE_API) {
+      api
+        .submitAlbum(id)
+        .then(() =>
+          setAlbums((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a))),
+        )
+        .catch((e: Error) => showToast(e.message));
+    } else {
+      handleUpdateAlbum(id, patch);
+    }
     showToast('Final selections submitted and locked.');
   }
 
@@ -326,7 +395,7 @@ export default function App() {
           onUpdateStaff={handleUpdateStaff}
           onDeleteStaff={handleDeleteStaff}
           onOpenClientGate={openClientGate}
-          onLogout={() => setScreen('login')}
+          onLogout={() => void handleLogout()}
           showToast={showToast}
         />
       )}

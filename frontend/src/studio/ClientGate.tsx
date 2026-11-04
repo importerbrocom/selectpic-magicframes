@@ -6,12 +6,14 @@ import type { Album } from './types';
 
 interface ClientGateProps {
   album: Album;
-  onUnlock: () => void;
+  /** Resolves to an error message, or null when unlocked. */
+  onUnlock: (password: string) => Promise<string | null>;
 }
 
 export function ClientGate({ album, onUnlock }: ClientGateProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const cover = useAlbumCover(album);
 
   // Reset the field whenever the album being gated changes.
@@ -20,18 +22,14 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
     setError('');
   }, [album.id]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // Compare whitespace-trimmed so stray spaces from typing/pasting on either
-    // side don't cause a false mismatch.
-    if (password.trim() === (album.password ?? '').trim()) {
-      setError('');
-      onUnlock();
-    } else {
-      setError(
-        'That password does not match this private album. Please try again.',
-      );
-    }
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    const err = await onUnlock(password.trim());
+    setBusy(false);
+    if (err) setError(err);
   }
 
   return (
@@ -67,8 +65,8 @@ export function ClientGate({ album, onUnlock }: ClientGateProps) {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button className="gateEnter" type="submit">
-            VIEW ALBUM
+          <button className="gateEnter" type="submit" disabled={busy}>
+            {busy ? 'CHECKING…' : 'VIEW ALBUM'}
           </button>
           <div className="gateError">{error}</div>
         </form>

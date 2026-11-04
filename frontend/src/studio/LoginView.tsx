@@ -1,22 +1,31 @@
 import { useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
+import { apiConfigured } from './api';
 
 interface LoginViewProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => void | Promise<void>;
   showToast: (msg: string) => void;
 }
 
 const ADMIN_EMAIL = 'admin@magicframes.test';
 
 export function LoginView({ onLogin, showToast }: LoginViewProps) {
-  const [email, setEmail] = useState(ADMIN_EMAIL);
-  const [password, setPassword] = useState('password');
+  const live = apiConfigured();
+  const [email, setEmail] = useState(live ? '' : ADMIN_EMAIL);
+  const [password, setPassword] = useState(live ? '' : 'password');
+  const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onLogin(email.trim(), password);
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onLogin(email.trim(), password);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -83,8 +92,13 @@ export function LoginView({ onLogin, showToast }: LoginViewProps) {
             >
               Forgot your password?
             </a>
-            <button className="btn" type="submit" style={{ padding: '16px 34px' }}>
-              LOG IN
+            <button
+              className="btn"
+              type="submit"
+              disabled={busy}
+              style={{ padding: '16px 34px' }}
+            >
+              {busy ? 'SIGNING IN…' : 'LOG IN'}
             </button>
           </div>
           <div
@@ -108,7 +122,9 @@ export function LoginView({ onLogin, showToast }: LoginViewProps) {
             <GoogleIcon />
             Continue with Google
           </button>
-          <div className="demo">Demo: admin@magicframes.test / password</div>
+          {!live && (
+            <div className="demo">Demo: admin@magicframes.test / password</div>
+          )}
         </form>
       </div>
     </section>

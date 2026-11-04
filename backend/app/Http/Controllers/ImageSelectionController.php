@@ -42,6 +42,8 @@ class ImageSelectionController extends Controller
      */
     public function store(Request $request, Project $project): JsonResponse
     {
+        $this->abortIfLocked($request, $project);
+
         $data = $request->validate([
             'file_id' => ['required', 'string', 'max:255'],
             'file_name' => ['nullable', 'string', 'max:255'],
@@ -88,9 +90,17 @@ class ImageSelectionController extends Controller
     public function destroy(Project $project, ImageSelection $selection): JsonResponse
     {
         abort_if($selection->project_id !== $project->id, 404);
+        $this->abortIfLocked(request(), $project);
 
         $selection->delete();
 
         return response()->json(null, 204);
+    }
+
+    /** Submitted albums are read-only for clients; admins may still edit. */
+    private function abortIfLocked(Request $request, Project $project): void
+    {
+        $isAdmin = $request->user()?->currentAccessToken()?->can('admin');
+        abort_if($project->locked && ! $isAdmin, 423, 'This selection has been submitted and is locked.');
     }
 }

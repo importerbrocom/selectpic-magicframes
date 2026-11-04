@@ -50,7 +50,7 @@ export function ClientView({
     try {
       await downloadSelectedZip(album.name, 'photo', [
         { file_id: p.id, file_name: p.name },
-      ]);
+      ], album.id);
     } catch (e) {
       showToast((e as Error).message);
     } finally {
