@@ -1989,13 +1989,17 @@ a.selectedCard figcaption {
 }
 
 @media (max-width: 760px) {
-  /* Header: compact, sticky, logo left + Logout right. */
+  /* Header: compact, sticky, logo LEFT + Logout RIGHT on one row. */
   .sideLogo,
   .sideLogo--image {
     position: sticky !important;
     top: 0;
     z-index: 40;
-    justify-content: space-between;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
     padding: 8px 18px;
     background: #ffffff;
     border-bottom: 1px solid #ececec;
@@ -2005,24 +2009,27 @@ a.selectedCard figcaption {
     width: 62px !important;
     height: auto;
     background: transparent;
+    flex-shrink: 0;
   }
   .mobileLogout {
     display: inline-block;
+    margin-left: auto; /* push to the far right */
     background: none;
     border: 0;
     color: #d93025;
     font-size: 15px;
     font-weight: 500;
     padding: 6px 0;
+    white-space: nowrap;
   }
 
-  /* Footer: icon-only, sticky, evenly spaced. */
+  /* Footer: icon + label under it, sticky, evenly spaced. */
   .nav,
   #adminView[data-theme='modern'] .nav {
     justify-content: space-around;
-    align-items: center;
+    align-items: stretch;
     gap: 0;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
     background: #ffffff;
     border-top: 1px solid #e6e6e6;
     box-shadow: none;
@@ -2031,14 +2038,22 @@ a.selectedCard figcaption {
   #adminView[data-theme='modern'] .nav button {
     flex: 1;
     min-width: 0;
-    padding: 10px 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0 6px;
     background: transparent;
-    color: #444;
+    color: #333;
     border-radius: 0;
+    align-items: center;
     justify-content: center;
   }
   .nav .navLabel {
-    display: none; /* icons only on mobile */
+    display: block; /* label shown under each icon */
+    font-size: 11px;
+    line-height: 1.1;
+    font-weight: 500;
+    color: inherit;
+    white-space: nowrap;
   }
   .nav .ico {
     display: block;
