@@ -60,6 +60,21 @@ export function parseFolderId(input: string): string {
  * fails, so we use the thumbnail endpoint at the requested width for every
  * size — grid, cover and full-screen zoom.)
  */
+/**
+ * Turn a pasted cover link into something an <img> can load. Google Drive
+ * *share* links (file/d/<id>/view, open?id=, uc?id=) are web pages, not
+ * images, so convert them to a Drive thumbnail URL. Other URLs pass through.
+ */
+export function normalizeCoverUrl(input: string): string {
+  const v = input.trim();
+  if (!v) return '';
+  if (!/drive\.google\.com|docs\.google\.com/.test(v)) return v;
+  const m =
+    v.match(/\/file\/d\/([\w-]+)/) ||
+    v.match(/[?&]id=([\w-]+)/);
+  return m ? thumbUrl(m[1], 1600) : v;
+}
+
 export function thumbUrl(id: string, size = 1000): string {
   return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
 }

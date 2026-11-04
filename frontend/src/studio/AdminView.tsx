@@ -10,6 +10,7 @@ import {
   getApiKey,
   listImages,
   listSubFolders,
+  normalizeCoverUrl,
   parseFolderId,
   thumbUrl,
 } from './drive';
@@ -157,7 +158,7 @@ export function AdminView({
         password: newPassword.trim(),
         driveLink,
         driveFolderId,
-        cover: newCover.trim() || photos[0].url,
+        cover: normalizeCoverUrl(newCover) || (driveFolderId ? '' : photos[0].url),
       });
       const id = editingId;
       resetForm();
@@ -176,7 +177,7 @@ export function AdminView({
       photos: driveFolderId ? 0 : photos.length,
       // Drive albums start with no cover so the first Drive photo auto-fills
       // it; demo albums use a bundled cover.
-      cover: newCover.trim() || (driveFolderId ? '' : photos[0].url),
+      cover: normalizeCoverUrl(newCover) || (driveFolderId ? '' : photos[0].url),
       status: 'In progress',
       views: 0,
       locked: false,
@@ -348,9 +349,9 @@ export function AdminView({
                 const patch: Partial<Album> = {};
                 if (photos && photos !== detailAlbum.photos)
                   patch.photos = photos;
-                // For Drive albums, always keep the cover pointed at the first
-                // Drive photo (replaces any stale/empty value).
-                if (cover && cover !== detailAlbum.cover) patch.cover = cover;
+                // Only auto-fill the cover when none is set, so a cover link
+                // the admin chose is never overwritten by the first photo.
+                if (cover && !detailAlbum.cover) patch.cover = cover;
                 if (Object.keys(patch).length) {
                   onUpdateAlbum(detailAlbum.id, patch);
                 }
