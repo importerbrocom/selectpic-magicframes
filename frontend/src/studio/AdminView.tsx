@@ -203,6 +203,9 @@ export function AdminView({
       <aside className="sidebar">
         <div className="sideLogo sideLogo--image">
           <BrandMark src="/logo.png" imgClassName="sideLogoImg" />
+          <button className="mobileLogout" onClick={onLogout}>
+            Logout
+          </button>
         </div>
         <nav className="nav">
           {NAV.map((item) => (
@@ -214,9 +217,11 @@ export function AdminView({
                 if (item.tab !== 'create') resetForm();
                 setTab(item.tab);
               }}
+              title={item.label}
+              aria-label={item.label}
             >
               <span className="ico">{item.icon}</span>
-              {item.label}
+              <span className="navLabel">{item.label}</span>
             </button>
           ))}
         </nav>
