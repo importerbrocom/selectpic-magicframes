@@ -326,7 +326,7 @@ export function ClientView({
       <footer className="clientFooter">
         <BrandMark src="/logotrans.png" imgClassName="footerLogo" />
         <div>
-          Captured with care ·{' '}
+          Captured with love ·{' '}
           <a
             className="gold"
             href="https://magicframes.co.in"
