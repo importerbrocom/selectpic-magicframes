@@ -19,11 +19,13 @@ selectpic-magicframes/
 
 ## Current working branch
 
-Active development happens on **`fix/vite7-shared-host-build`** (not yet
-merged to `main`). This branch contains the Vite-7 shared-host fix *and* the
-full studio theme, admin rebuild, Drive integration, backend sync, and mobile
-layout — everything described below. Keep working on this branch unless
-told otherwise; coordinate before merging to `main`.
+Active development happens on **`fix/vite7-shared-host-build`**. It contains
+the Vite-7 shared-host fix *and* the full studio theme, admin rebuild, Drive
+integration, backend sync, and mobile layout — everything described below.
+**PR #3** proposes merging it into `main` and is open, not yet merged — see
+its description for the full changelog and the "before merging" caveats
+below. Keep working on this branch unless told otherwise; if `main` ever
+merges #3, re-check this file still matches reality.
 
 ## Frontend (`frontend/`)
 
@@ -45,6 +47,19 @@ told otherwise; coordinate before merging to `main`.
   Cormorant Garamond / Montserrat fonts, deep-ink backgrounds). Keep new UI
   consistent with whichever side you're touching — see
   `#[[file:frontend/src/App.css]]` for the exact tokens before adding colors.
+- **Mobile admin layout** (≤760px): the desktop sidebar is deliberately
+  restructured, not just shrunk. `.sidebar` becomes `display: contents` so
+  its children lay out independently — the logo block becomes a sticky top
+  header (logo left, red **Logout** button pushed right via
+  `margin-left: auto`; the `.mobileLogout` button is hidden on desktop), and
+  `.nav` becomes a fixed, white, bottom tab bar with each icon's label
+  (`.navLabel`) underneath. Several `!important`s in that block exist on
+  purpose: earlier base rules for `.sideLogo`/`.sideLogo--image` set
+  `display: grid/block` and would otherwise make Logout wrap under the logo.
+  The modern-theme selectors (`#adminView[data-theme='modern'] .nav ...`)
+  must be overridden explicitly at mobile widths or they win on specificity.
+  There are several `@media (max-width: 760px)` blocks in `App.css`; the
+  *last* one is the mobile admin chrome and relies on appearing last.
 - Fonts are loaded via Google Fonts `<link>` in `frontend/index.html`.
 - Logos: `/logo.png` (admin sidebar), `/logotrans.png` (client pages, dark
   backgrounds), `/logo2.png` (favicon). These PNGs live only on the deployed
@@ -178,3 +193,57 @@ CI/CD. Know this flow before telling the user to "just deploy":
 - Commit messages in this repo are detailed and explain *why*, not just
   *what* — follow that pattern given how many deploy/runtime surprises this
   codebase has had.
+
+## Known gaps (unresolved — don't assume these are handled)
+
+Be upfront about these when the user asks "is it ready" or "is it secure."
+None are fixed yet; PR #3 lists them as pre-merge caveats.
+
+- **Security / auth is not production-grade.**
+  - Admin login is a hardcoded demo credential in `App.tsx`
+    (`admin@magicframes.test` / `password`) checked entirely client-side.
+    The Staff page's "accounts" are likewise client-side `localStorage`
+    only — staff cannot actually log in as themselves.
+  - Album passwords are stored **plain text** in `projects.password` and
+    returned in API responses (including the public
+    `GET projects/by-slug/{slug}`), so the client-side password gate is
+    cosmetic: anyone who can call the API can read the password.
+  - The `projects` and `selections` API routes have **no authentication**
+    (Sanctum is installed but unused). Anyone who can reach the API can
+    list, edit, or delete any album. Proper fix = real admin auth
+    (Sanctum), hash/verify album passwords server-side, and gate
+    admin-only routes.
+- **Data migration:** albums created before the backend sync exist only in
+  one browser's `localStorage`, not on the server, and have no slug. They
+  must be re-created in the admin once. Selections made before the `both`
+  fix were never persisted and must be re-marked.
+- **Unconfirmed on the live site:** the full `both` pipeline (client marks
+  Both → server stores it → admin shows count/photos/ZIP). The schema fix
+  and a direct SQLite insert were verified, but the end-to-end UI test has
+  not been confirmed. Don't claim it's working until the user confirms.
+- **No automated tests** on either side. Verification has been `tsc`
+  type-checks (using a stubbed `react` types file because `npm install`
+  is blocked in the sandbox), PHP `-l` lint, and manual testing on the
+  deployed site.
+- **Logo PNGs** (`logo.png`, `logotrans.png`, `logo2.png`) exist only on the
+  deployed server, not in `frontend/public/`, so a clean checkout won't
+  have them.
+- **ZIP downloads are slow for big sets** — the backend downloads every
+  original server-side before zipping, buffered in temp storage
+  (`storage/app/tmp`). A streaming zip would fix this if volumes grow.
+- **Old JS bundles accumulate** in the deployed `assets/` folder because
+  `cp -r dist/*` never deletes previous hashed files. Harmless but
+  messy; clean up by keeping only files referenced by `index.html`.
+
+## Working with this user
+
+- They deploy and test on a real phone and desktop, and report with
+  screenshots. When a reported change "didn't update," it has usually been
+  a stale deploy or cache, not a code bug — verify the deployed commit and
+  bundle before changing code again.
+- Visual requests are precise ("exactly like the second screenshot"). Read
+  the screenshots carefully for the specific differences (spacing, label
+  vs. icon-only, alignment) rather than guessing the intent.
+- The sandbox has no npm registry access, so builds can't be run here —
+  say so plainly and give the user the exact commands to build on the
+  server instead of implying it was verified.
