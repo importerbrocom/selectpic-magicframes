@@ -235,6 +235,34 @@ None are fixed yet; PR #3 lists them as pre-merge caveats.
   `cp -r dist/*` never deletes previous hashed files. Harmless but
   messy; clean up by keeping only files referenced by `index.html`.
 
+## Pending: real auth + password hardening (not started)
+
+Agreed plan, awaiting the user's go-ahead and two decisions before any code
+is written. Don't assume this is done just because it's documented here —
+check git log for it.
+
+- **Album passwords**: encrypt (Laravel `encrypted` cast on
+  `projects.password`, reversible with `APP_KEY` — chosen over bcrypt hashing
+  because the admin UI re-displays and re-shares the password via "Copy" and
+  "Share on WhatsApp" after creation; a one-way hash would break that unless
+  those features are redesigned around a show-once + reset flow instead).
+  `GET projects/by-slug/{slug}` must stop returning `password` in the
+  response and gain a paired `POST .../unlock` that checks it server-side
+  and returns a short-lived token; selection routes should require that
+  token so a client can only touch their own album.
+- **Admin auth**: a real admin user + Laravel Sanctum token login,
+  `auth:sanctum` on all admin-only routes (`projects` CRUD, `photos/zip`,
+  `drive/images`), replacing the hardcoded check in `LoginView`/`App.tsx`.
+  Needs a first-admin-account artisan command (prompt for
+  email/password, don't hardcode credentials in the repo) and must ship
+  together with the frontend change — deploying the auth-gated backend
+  before the frontend knows how to log in (or vice versa) locks the admin
+  out. The Staff page remains a separate, not-yet-real-auth concern.
+- **Still waiting on the user**: confirmation of the end-to-end `both`
+  pipeline test (see Known gaps above) before building on top of the
+  selections data — if the client's "both" picks still aren't reaching the
+  server for some *other* reason, that should be fixed first.
+
 ## Working with this user
 
 - They deploy and test on a real phone and desktop, and report with
