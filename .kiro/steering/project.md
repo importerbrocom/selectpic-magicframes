@@ -199,20 +199,13 @@ CI/CD. Know this flow before telling the user to "just deploy":
 Be upfront about these when the user asks "is it ready" or "is it secure."
 None are fixed yet; PR #3 lists them as pre-merge caveats.
 
-- **Security / auth is not production-grade.**
-  - Admin login is a hardcoded demo credential in `App.tsx`
-    (`admin@magicframes.test` / `password`) checked entirely client-side.
-    The Staff page's "accounts" are likewise client-side `localStorage`
-    only — staff cannot actually log in as themselves.
-  - Album passwords are stored **plain text** in `projects.password` and
-    returned in API responses (including the public
-    `GET projects/by-slug/{slug}`), so the client-side password gate is
-    cosmetic: anyone who can call the API can read the password.
-  - The `projects` and `selections` API routes have **no authentication**
-    (Sanctum is installed but unused). Anyone who can reach the API can
-    list, edit, or delete any album. Proper fix = real admin auth
-    (Sanctum), hash/verify album passwords server-side, and gate
-    admin-only routes.
+- **Security (partly hardened — see "Auth & album access" below).**
+  Remaining weaknesses: the Staff page "accounts" are client-side
+  `localStorage` only (staff cannot log in as themselves); the Drive folder
+  is public to anyone with its ID, so a leaked ID bypasses the gate; and
+  `POST photos/zip` accepts any public Drive file id from any valid token.
+  Album passwords are reversibly encrypted with `APP_KEY` — losing/rotating
+  the key makes them unrecoverable, so back it up.
 - **Data migration:** albums created before the backend sync exist only in
   one browser's `localStorage`, not on the server, and have no slug. They
   must be re-created in the admin once. Selections made before the `both`
@@ -235,33 +228,38 @@ None are fixed yet; PR #3 lists them as pre-merge caveats.
   `cp -r dist/*` never deletes previous hashed files. Harmless but
   messy; clean up by keeping only files referenced by `index.html`.
 
-## Pending: real auth + password hardening (not started)
+## Auth & album access (implemented, commit 67563ad — verify deployed)
 
-Agreed plan, awaiting the user's go-ahead and two decisions before any code
-is written. Don't assume this is done just because it's documented here —
-check git log for it.
-
-- **Album passwords**: encrypt (Laravel `encrypted` cast on
-  `projects.password`, reversible with `APP_KEY` — chosen over bcrypt hashing
-  because the admin UI re-displays and re-shares the password via "Copy" and
-  "Share on WhatsApp" after creation; a one-way hash would break that unless
-  those features are redesigned around a show-once + reset flow instead).
-  `GET projects/by-slug/{slug}` must stop returning `password` in the
-  response and gain a paired `POST .../unlock` that checks it server-side
-  and returns a short-lived token; selection routes should require that
-  token so a client can only touch their own album.
-- **Admin auth**: a real admin user + Laravel Sanctum token login,
-  `auth:sanctum` on all admin-only routes (`projects` CRUD, `photos/zip`,
-  `drive/images`), replacing the hardcoded check in `LoginView`/`App.tsx`.
-  Needs a first-admin-account artisan command (prompt for
-  email/password, don't hardcode credentials in the repo) and must ship
-  together with the frontend change — deploying the auth-gated backend
-  before the frontend knows how to log in (or vice versa) locks the admin
-  out. The Staff page remains a separate, not-yet-real-auth concern.
+- **Admin**: `POST auth/login` (throttle 5/min) returns a Sanctum token with
+  ability `admin` (14 days), stored in `localStorage` `mf.admin.token`.
+  `auth/me`, `auth/logout`, `projects` CRUD and `drive/images` need
+  `auth:sanctum` + `abilities:admin`. Create/reset the admin with
+  `php artisan admin:create` (prompts; nothing hardcoded). In local no-API
+  mode the demo credentials still work.
+- **Album passwords**: `Project.password` uses the `encrypted` cast, is in
+  `$hidden`, and is only exposed (via `makeVisible`) on admin endpoints. The
+  migration `2026_05_01_000000_encrypt_project_passwords` encrypts existing
+  plaintext rows idempotently.
+- **Client unlock**: public `GET projects/by-slug/{slug}` returns only
+  id/slug/name/subtitle/cover/locked/allow_download. `POST
+  projects/by-slug/{slug}/unlock` (throttle 10/min) checks the password
+  server-side and returns the full album (incl. Drive folder + selections)
+  plus a 12h token with abilities `album` and `album:{id}`, kept in
+  `sessionStorage`.
+- **Selections / submit** need admin or the matching album token
+  (`project.access` middleware = `EnsureProjectAccess`). `POST
+  projects/{id}/submit` locks the album; after that clients get HTTP 423 on
+  selection changes, admins can still edit. `POST photos/zip` accepts
+  `ability:admin,album`.
+- **Deploy order matters**: backend (`migrate`, `admin:create`) must be live
+  before/with the new frontend, otherwise the admin is locked out. Roll back
+  with `php artisan migrate:rollback --step=1` (decrypts passwords) plus the
+  previous commit.
+- Sanctum middleware class names (`CheckAbilities`, `CheckForAnyAbility`)
+  were written from memory — nothing could be run in the sandbox. Confirm
+  with `php artisan route:list` on the server.
 - **Still waiting on the user**: confirmation of the end-to-end `both`
-  pipeline test (see Known gaps above) before building on top of the
-  selections data — if the client's "both" picks still aren't reaching the
-  server for some *other* reason, that should be fixed first.
+  pipeline test (see Known gaps above).
 
 ## Working with this user
 
