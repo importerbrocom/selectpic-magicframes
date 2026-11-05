@@ -1209,6 +1209,14 @@ button:disabled {
   gap: 8px;
   margin-bottom: 10px;
 }
+.detailExportEvents {
+  margin-top: 6px;
+  border-top: 1px dashed #e3e5ea;
+  padding-top: 6px;
+}
+.detailExportEvent + .detailExportEvent {
+  border-top: 1px dashed #eef0f3;
+}
 .countPill.light {
   border-color: #e3e5ea;
   color: #555;

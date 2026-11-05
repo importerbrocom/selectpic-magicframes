@@ -16,6 +16,7 @@ import {
 } from './drive';
 import { photos } from './data';
 import { CoverImg } from './CoverImg';
+import { useAlbumEvents } from './useAlbumEvents';
 import { StaffView } from './StaffView';
 import { ProfileView, loadProfile } from './ProfileView';
 import { SettingsView } from './SettingsView';
@@ -618,34 +619,63 @@ function AlbumDetail({
       ? allSelected
       : allSelected.filter((p) => p.type === selFilter);
 
-  async function downloadSelected(type: 'all' | SelectionType) {
+  // Which event (sub-folder) each selected photo belongs to, so downloads can
+  // be split per event (Engagement / Wedding / …).
+  const albumEvents = useAlbumEvents(album);
+
+  /**
+   * Download a ZIP of specific selected photos. `key` is a unique id for the
+   * button's loading state; `zipLabel` names the archive.
+   */
+  async function runDownload(
+    key: string,
+    zipLabel: string,
+    files: { file_id: string; file_name: string }[],
+  ) {
     if (!album.driveFolderId) {
       showToast('Photo download works only for Google Drive albums.');
       return;
     }
-    const files = allSelected
-      .filter((p) => (type === 'all' ? true : p.type === type))
-      .map((p) => ({ file_id: p.id, file_name: p.name }));
     if (files.length === 0) {
-      showToast(
-        type === 'all'
-          ? 'No photos selected yet.'
-          : `No ${type.toUpperCase()} photos selected.`,
-      );
+      showToast('No photos selected for that choice.');
       return;
     }
-    setDownloading(type);
+    setDownloading(key);
     showToast(
-      `Preparing a ZIP of ${files.length} ${type === 'all' ? '' : type.toUpperCase() + ' '}photo${files.length === 1 ? '' : 's'}…`,
+      `Preparing a ZIP of ${files.length} photo${files.length === 1 ? '' : 's'}…`,
     );
     try {
-      await downloadSelectedZip(album.name, type, files);
+      await downloadSelectedZip(zipLabel, key, files, album.id);
       showToast('Download ready.');
     } catch (e) {
       showToast((e as Error).message);
     } finally {
       setDownloading(null);
     }
+  }
+
+  /** Whole-album download by choice (bride/groom/both/all). */
+  function downloadSelected(type: 'all' | SelectionType) {
+    const files = allSelected
+      .filter((p) => (type === 'all' ? true : p.type === type))
+      .map((p) => ({ file_id: p.id, file_name: p.name }));
+    void runDownload(type, `${album.name} - ${type}`, files);
+  }
+
+  /** Per-event download by choice. */
+  function downloadEvent(
+    eventName: string,
+    eventFileIds: Set<string>,
+    type: 'all' | SelectionType,
+  ) {
+    const files = allSelected
+      .filter(
+        (p) =>
+          eventFileIds.has(p.id) && (type === 'all' ? true : p.type === type),
+      )
+      .map((p) => ({ file_id: p.id, file_name: p.name }));
+    const key = `${eventName}:${type}`;
+    void runDownload(key, `${album.name} - ${eventName} - ${type}`, files);
   }
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(shareLink)}`;
 
@@ -739,6 +769,14 @@ function AlbumDetail({
               <div className="formSectionLabel" style={{ marginBottom: 10 }}>
                 DOWNLOAD SELECTED PHOTOS (ZIP)
               </div>
+              {album.driveFolderId && albumEvents.events.length > 1 && (
+                <div
+                  className="formSectionLabel"
+                  style={{ margin: '0 0 8px', opacity: 0.7 }}
+                >
+                  ALL EVENTS
+                </div>
+              )}
               <div className="detailExportRow">
                 <button
                   className="btn small"
@@ -777,6 +815,63 @@ function AlbumDetail({
                     : `All (${totalSelected})`}
                 </button>
               </div>
+
+              {/* Per-event downloads (Engagement / Wedding / …) */}
+              {album.driveFolderId && albumEvents.events.length > 1 && (
+                <div className="detailExportEvents">
+                  {albumEvents.events.map((ev) => {
+                    const sel = allSelected.filter((p) => ev.fileIds.has(p.id));
+                    const n = (t: SelectionType) =>
+                      sel.filter((p) => p.type === t).length;
+                    const choices: ('all' | SelectionType)[] = [
+                      'bride',
+                      'groom',
+                      'both',
+                      'all',
+                    ];
+                    return (
+                      <div className="detailExportEvent" key={ev.id}>
+                        <div
+                          className="formSectionLabel"
+                          style={{ margin: '14px 0 8px' }}
+                        >
+                          {ev.name.toUpperCase()}
+                        </div>
+                        <div className="detailExportRow">
+                          {choices.map((t) => {
+                            const count = t === 'all' ? sel.length : n(t);
+                            const key = `${ev.name}:${t}`;
+                            const label =
+                              t === 'all'
+                                ? 'All'
+                                : t.charAt(0).toUpperCase() + t.slice(1);
+                            return (
+                              <button
+                                key={t}
+                                className="btn small"
+                                disabled={!!downloading}
+                                onClick={() =>
+                                  downloadEvent(ev.name, ev.fileIds, t)
+                                }
+                              >
+                                {downloading === key
+                                  ? 'Zipping…'
+                                  : `${label} (${count})`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {album.driveFolderId && albumEvents.loading && (
+                <p className="muted tiny" style={{ marginTop: 10 }}>
+                  Loading events for per-event downloads…
+                </p>
+              )}
+
               {!album.driveFolderId && (
                 <p className="muted tiny" style={{ marginTop: 10 }}>
                   Photo download is available for Google Drive albums.
