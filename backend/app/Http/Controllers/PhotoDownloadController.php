@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Services\DrivePublicDownloader;
+use App\Services\ZipStreamWriter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 use ZipArchive;
@@ -128,7 +128,7 @@ class PhotoDownloadController extends Controller
      * The files are PUBLIC Drive files; no Google credentials are required.
      * Returns 422 JSON if none of the files could be fetched.
      */
-    public function zip(Request $request): BinaryFileResponse|JsonResponse
+    public function zip(Request $request): StreamedResponse|JsonResponse
     {
         $data = $request->validate([
             'album' => ['nullable', 'string', 'max:255'],
@@ -159,83 +159,66 @@ class PhotoDownloadController extends Controller
         $typeSlug = $this->slug($data['type'] ?? 'selected');
         $zipName = "{$albumSlug}_{$typeSlug}_photos.zip";
 
-        // Work in a writable app-owned temp dir (the system temp dir isn't
-        // reliably writable on shared hosting).
         $base = storage_path('app/tmp');
         if (! is_dir($base)) {
             @mkdir($base, 0775, true);
         }
-        // Per-request working folder; downloaded files live here, then we zip
-        // the folder and remove it.
-        $work = $base . '/' . uniqid('mfzip_', true);
-        if (! @mkdir($work, 0775, true)) {
-            return response()->json([
-                'message' => 'Could not create a working folder for the download.',
-            ], 500);
-        }
-        $tmp = $base . '/' . uniqid('mfarc_', true) . '.zip';
 
-        $added = 0;
-        $used = [];
-        try {
-            // 1) Stream every file to disk (constant memory — no full buffer).
-            foreach ($data['files'] as $i => $f) {
-                $part = $work . '/' . sprintf('%04d', $i) . '.bin';
-                $ok = false;
+        $files = $data['files'];
+
+        // Stream the ZIP straight to the browser as each photo is fetched.
+        // Bytes start flowing immediately and nothing accumulates, so a large
+        // event can't hit the web server's request timeout or exhaust memory.
+        $response = new StreamedResponse(function () use ($files, $base) {
+            @set_time_limit(0);
+            // Turn off any output buffering so bytes stream out immediately.
+            while (ob_get_level() > 0) {
+                @ob_end_flush();
+            }
+            $writer = new ZipStreamWriter();
+            $used = [];
+
+            foreach ($files as $i => $f) {
+                $part = $base . '/' . uniqid('mfpart_', true);
                 try {
                     $ok = $this->downloader->downloadToFile($f['file_id'], $part);
                 } catch (Throwable) {
                     $ok = false;
                 }
-                if (! $ok) {
+                if (! $ok || ! is_file($part) || filesize($part) === 0) {
                     @unlink($part);
-                    continue; // skip unreachable files, keep going
+                    continue;
                 }
 
                 $rawName = $f['file_name'] ?? $f['file_id'];
                 $name = $this->withExtensionFromFile($rawName, $part);
                 $name = $this->uniqueName($name, $i, $used);
-                // Rename to the final in-zip filename so we can zip by folder.
-                $dest = $work . '/' . $name;
-                if (@rename($part, $dest)) {
-                    $added++;
-                } else {
-                    @unlink($part);
+
+                try {
+                    $writer->addFile($name, $part);
+                } catch (Throwable $e) {
+                    Log::error('ZIP stream add failed: ' . $e->getMessage());
                 }
+                @unlink($part);
+
+                // Push bytes to the client now so the connection stays active.
+                @ob_flush();
+                @flush();
             }
 
-            if ($added === 0) {
-                $this->rrmdir($work);
-                return response()->json([
-                    'message' => 'None of the selected photos could be downloaded. '
-                        . 'Make sure the Drive folder is shared “Anyone with the link”.',
-                ], 422);
-            }
+            $writer->finish();
+        });
 
-            // 2) Build the zip. Prefer the system `zip` binary (near-zero PHP
-            // memory); fall back to a chunked ZipArchive if it's unavailable.
-            if (! $this->zipWithSystemBinary($work, $tmp)
-                && ! $this->zipWithArchive($work, $tmp)) {
-                throw new \RuntimeException('No working zip method on this host.');
-            }
-        } catch (Throwable $e) {
-            Log::error('ZIP build failed: ' . $e->getMessage(), ['exception' => $e]);
-            $this->rrmdir($work);
-            @unlink($tmp);
+        $response->headers->set('Content-Type', 'application/zip');
+        $response->headers->set(
+            'Content-Disposition',
+            'attachment; filename="' . $zipName . '"'
+        );
+        // Disable proxy/server buffering so bytes reach the client immediately.
+        $response->headers->set('X-Accel-Buffering', 'no');
+        $response->headers->set('Cache-Control', 'no-store');
 
-            return response()->json([
-                'message' => 'The server could not build this ZIP. '
-                    . 'Please try again, or download in smaller batches.',
-            ], 500);
-        }
-
-        // Working folder no longer needed; the zip has everything.
-        $this->rrmdir($work);
-
-        // Send the file and delete it afterwards.
-        return response()
-            ->download($tmp, $zipName, ['Content-Type' => 'application/zip'])
-            ->deleteFileAfterSend(true);
+        return $response;
     }
 
     /**
