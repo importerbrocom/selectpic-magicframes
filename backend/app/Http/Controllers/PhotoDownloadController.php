@@ -6,6 +6,7 @@ use App\Services\DrivePublicDownloader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 use ZipArchive;
 
@@ -121,6 +122,58 @@ class PhotoDownloadController extends Controller
         return response()
             ->download($tmp, $zipName, ['Content-Type' => 'application/zip'])
             ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Download a SINGLE public Drive photo directly as an image (no ZIP).
+     *
+     * Request body:
+     *   file_id    string   the Drive file id (required)
+     *   file_name  string   suggested filename (optional)
+     */
+    public function file(Request $request): StreamedResponse|JsonResponse
+    {
+        $data = $request->validate([
+            'file_id' => ['required', 'string', 'max:255'],
+            'file_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        @set_time_limit(0);
+
+        try {
+            $bytes = $this->downloader->download($data['file_id']);
+        } catch (Throwable) {
+            $bytes = null;
+        }
+
+        if ($bytes === null) {
+            return response()->json([
+                'message' => 'That photo could not be downloaded. Make sure the '
+                    . 'Drive folder is shared “Anyone with the link”.',
+            ], 422);
+        }
+
+        $name = $this->withExtension($data['file_name'] ?? $data['file_id'], $bytes);
+        $mime = $this->mimeFor($bytes);
+
+        return response()->streamDownload(function () use ($bytes) {
+            echo $bytes;
+        }, $name, [
+            'Content-Type' => $mime,
+            'Content-Length' => (string) strlen($bytes),
+        ]);
+    }
+
+    /** Map detected bytes to an image MIME type. */
+    private function mimeFor(string $bytes): string
+    {
+        return match ($this->detectExtension($bytes)) {
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            default => 'image/jpeg',
+        };
     }
 
     /**

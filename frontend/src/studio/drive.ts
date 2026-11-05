@@ -174,6 +174,81 @@ export function downloadUrl(id: string): string {
   return `https://drive.google.com/uc?export=download&id=${id}`;
 }
 
+/** Trigger a browser save of a blob under the given filename. */
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoke after a tick so the download has a chance to start.
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/** Ensure a filename has a usable image extension. */
+function ensureImageExt(name: string): string {
+  return /\.(jpe?g|png|webp|gif|heic|tiff?|bmp)$/i.test(name)
+    ? name
+    : name + '.jpg';
+}
+
+/**
+ * Download ONE public Drive photo directly as an image file (no ZIP).
+ *
+ * Tries a direct client-side fetch of the Drive bytes first (keeps the real
+ * filename and avoids the backend). If that's blocked (CORS) it asks the
+ * backend for just this file's bytes and saves them. Falls back to opening
+ * the Drive download URL in a new tab as a last resort.
+ */
+export async function downloadSinglePhoto(
+  fileId: string,
+  fileName: string,
+  albumId?: number,
+): Promise<void> {
+  const name = ensureImageExt(fileName || fileId);
+
+  // 1) Direct client-side fetch (fastest, no server work).
+  try {
+    const res = await fetch(downloadUrl(fileId), { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      if (!blob.type.includes('text/html') && blob.size > 0) {
+        saveBlob(blob, name);
+        return;
+      }
+    }
+  } catch {
+    // CORS or network — fall through to the backend.
+  }
+
+  // 2) Backend single-file fetch (reuses the public downloader, no zip).
+  if (BACKEND_BASE) {
+    const res = await fetch(`${BACKEND_BASE}/api/photos/file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: '*/*',
+        ...authHeader(albumId),
+      },
+      body: JSON.stringify({ file_id: fileId, file_name: name }),
+    });
+    if (res.ok) {
+      saveBlob(await res.blob(), name);
+      return;
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        'Your album session has expired. Please re-open the album link and enter the password again.',
+      );
+    }
+  }
+
+  // 3) Last resort: open the Drive download page.
+  window.open(downloadUrl(fileId), '_blank', 'noopener');
+}
+
 const BACKEND_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
     /\/$/,

@@ -4,7 +4,7 @@ import { SocialIcons } from './SocialIcons';
 import { selectionCounts } from './helpers';
 import { useDriveGallery } from './useDriveGallery';
 import { useAlbumCover } from './useAlbumCover';
-import { bestImageUrl, downloadSelectedZip } from './drive';
+import { bestImageUrl, downloadSelectedZip, downloadSinglePhoto } from './drive';
 import type { DrivePhoto } from './drive';
 import type { Album, PhotoFilter, SelectionType } from './types';
 
@@ -49,9 +49,8 @@ export function ClientView({
     if (!album.driveFolderId) return;
     setDownloadingId(p.id);
     try {
-      await downloadSelectedZip(album.name, 'photo', [
-        { file_id: p.id, file_name: p.name },
-      ], album.id);
+      // Single photo downloads the image directly (not as a ZIP).
+      await downloadSinglePhoto(p.id, p.name, album.id);
     } catch (e) {
       showToast((e as Error).message);
     } finally {

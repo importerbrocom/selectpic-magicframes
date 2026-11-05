@@ -39,5 +39,7 @@ Route::middleware(['auth:sanctum', 'project.access'])->group(function () {
 });
 
 // --- Any authenticated album/admin token ------------------------------
-Route::post('photos/zip', [PhotoDownloadController::class, 'zip'])
-    ->middleware(['auth:sanctum', 'ability:admin,album']);
+Route::middleware(['auth:sanctum', 'ability:admin,album'])->group(function () {
+    Route::post('photos/zip', [PhotoDownloadController::class, 'zip']);
+    Route::post('photos/file', [PhotoDownloadController::class, 'file']);
+});
