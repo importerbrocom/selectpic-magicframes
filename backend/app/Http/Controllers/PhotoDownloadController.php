@@ -64,6 +64,41 @@ class PhotoDownloadController extends Controller
             }
         }
 
+        // End-to-end ZIP test of two files (?zip_test=ID1,ID2). Reports which
+        // step fails, so we can pinpoint a 500 without reading the log.
+        $zipTest = null;
+        $zipIds = $request->query('zip_test');
+        if (is_string($zipIds) && $zipIds !== '') {
+            $ids = array_filter(array_map('trim', explode(',', $zipIds)));
+            $work = $dir . '/' . uniqid('mfdiagzip_', true);
+            $zipPath = $dir . '/' . uniqid('mfdiagarc_', true) . '.zip';
+            $steps = [];
+            try {
+                $steps['mkdir'] = @mkdir($work, 0775, true);
+                $saved = 0;
+                foreach (array_values($ids) as $i => $id) {
+                    $p = $work . '/' . sprintf('%04d.jpg', $i);
+                    if ($this->downloader->downloadToFile($id, $p)) {
+                        $saved++;
+                    }
+                }
+                $steps['files_saved'] = $saved;
+                $steps['zip_system'] = $this->zipWithSystemBinary($work, $zipPath);
+                if (! $steps['zip_system']) {
+                    $steps['zip_archive'] = $this->zipWithArchive($work, $zipPath);
+                }
+                $steps['zip_exists'] = is_file($zipPath);
+                $steps['zip_bytes'] = is_file($zipPath) ? (int) filesize($zipPath) : 0;
+                $steps['disk_free_bytes'] = (int) @disk_free_space($dir);
+            } catch (Throwable $e) {
+                $steps['error'] = $e->getMessage();
+            } finally {
+                $this->rrmdir($work);
+                @unlink($zipPath);
+            }
+            $zipTest = $steps;
+        }
+
         return response()->json([
             'php_version' => PHP_VERSION,
             'zip_extension' => class_exists(ZipArchive::class),
@@ -75,7 +110,10 @@ class PhotoDownloadController extends Controller
             'max_execution_time' => ini_get('max_execution_time'),
             'allow_url_fopen' => (bool) ini_get('allow_url_fopen'),
             'curl_extension' => extension_loaded('curl'),
+            'exec_enabled' => function_exists('exec'),
+            'disk_free_bytes' => (int) @disk_free_space($dir),
             'fetch_test' => $fetch,
+            'zip_test' => $zipTest,
         ]);
     }
 
