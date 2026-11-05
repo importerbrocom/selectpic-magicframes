@@ -18,6 +18,68 @@ class PhotoDownloadController extends Controller
     }
 
     /**
+     * Diagnostics for the download pipeline. Open in a browser to see exactly
+     * why ZIP downloads fail (zip extension, temp-dir writability, limits, and
+     * whether a single Drive file can actually be fetched from this server).
+     *
+     * Query: ?file_id=<a-public-drive-file-id> to test a real fetch.
+     */
+    public function diagnostics(Request $request): JsonResponse
+    {
+        $dir = storage_path('app/tmp');
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+
+        $tmpWritable = false;
+        $tmpError = null;
+        try {
+            $probe = tempnam($dir, 'mfdiag');
+            if ($probe !== false) {
+                $tmpWritable = @file_put_contents($probe, 'ok') !== false;
+                @unlink($probe);
+            }
+        } catch (Throwable $e) {
+            $tmpError = $e->getMessage();
+        }
+
+        $fetch = null;
+        $fileId = $request->query('file_id');
+        if (is_string($fileId) && $fileId !== '') {
+            $part = @tempnam($dir, 'mffetch');
+            try {
+                $ok = $part !== false
+                    && $this->downloader->downloadToFile($fileId, $part);
+                $fetch = [
+                    'file_id' => $fileId,
+                    'ok' => (bool) $ok,
+                    'bytes' => $ok && $part ? (int) @filesize($part) : 0,
+                ];
+            } catch (Throwable $e) {
+                $fetch = ['file_id' => $fileId, 'ok' => false, 'error' => $e->getMessage()];
+            } finally {
+                if ($part !== false) {
+                    @unlink($part);
+                }
+            }
+        }
+
+        return response()->json([
+            'php_version' => PHP_VERSION,
+            'zip_extension' => class_exists(ZipArchive::class),
+            'tmp_dir' => $dir,
+            'tmp_dir_exists' => is_dir($dir),
+            'tmp_dir_writable' => $tmpWritable,
+            'tmp_dir_error' => $tmpError,
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+            'allow_url_fopen' => (bool) ini_get('allow_url_fopen'),
+            'curl_extension' => extension_loaded('curl'),
+            'fetch_test' => $fetch,
+        ]);
+    }
+
+    /**
      * Build a ZIP of the given Google Drive photos and return it.
      *
      * Request body:

@@ -43,3 +43,6 @@ Route::middleware(['auth:sanctum', 'ability:admin,album'])->group(function () {
     Route::post('photos/zip', [PhotoDownloadController::class, 'zip']);
     Route::post('photos/file', [PhotoDownloadController::class, 'file']);
 });
+
+// Download pipeline diagnostics (open in a browser). Safe: no secrets.
+Route::get('photos/diagnostics', [PhotoDownloadController::class, 'diagnostics']);
