@@ -115,8 +115,9 @@ class DrivePublicDownloader
     }
 
     /**
-     * Stream a GET to a file in small chunks so the full body is NEVER held
-     * in memory (critical on shared hosts with a 512MB–1GB PHP limit).
+     * Stream a GET straight to a file using cURL writing to a file handle, so
+     * the full body is NEVER held in memory (critical on shared hosts). cURL
+     * is the most reliable transport on cPanel/LiteSpeed.
      *
      * Returns true if a non-HTML, non-empty body was written; null if the
      * response looked like an HTML page (caller should try the fallback host);
@@ -124,28 +125,73 @@ class DrivePublicDownloader
      */
     private function streamTo(string $url, array $query, string $path): ?bool
     {
+        if (! function_exists('curl_init')) {
+            return $this->streamToViaFopen($url, $query, $path);
+        }
+
+        $full = $url . '?' . http_build_query($query);
+        $out = @fopen($path, 'wb');
+        if ($out === false) {
+            return false;
+        }
+
+        $contentType = '';
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $full,
+            CURLOPT_FILE => $out,            // write body directly to disk
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 6,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_TIMEOUT => 300,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT => 'MagicFrames/1.0',
+            CURLOPT_HEADERFUNCTION => function ($c, $header) use (&$contentType) {
+                if (stripos($header, 'Content-Type:') === 0) {
+                    $contentType = strtolower(trim(substr($header, 13)));
+                }
+                return strlen($header);
+            },
+        ]);
+        $ok = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        fclose($out);
+
+        if ($ok === false || $status >= 400) {
+            return false;
+        }
+        if (str_contains($contentType, 'text/html')) {
+            return null; // interstitial / error page — try the fallback host
+        }
+
+        return (is_file($path) && filesize($path) > 0) ? true : false;
+    }
+
+    /**
+     * Fallback transport when cURL is unavailable: fopen HTTP wrapper, read in
+     * 256KB chunks (still constant memory).
+     */
+    private function streamToViaFopen(string $url, array $query, string $path): ?bool
+    {
         $full = $url . '?' . http_build_query($query);
         $in = null;
         $out = null;
         try {
-            // Raw stream context — read the body incrementally, not all at once.
             $context = stream_context_create([
                 'http' => [
                     'method' => 'GET',
                     'follow_location' => 1,
-                    'timeout' => 180,
+                    'timeout' => 300,
                     'header' => "User-Agent: MagicFrames/1.0\r\n",
                     'ignore_errors' => true,
                 ],
                 'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
             ]);
-
             $in = @fopen($full, 'rb', false, $context);
             if ($in === false) {
                 return false;
             }
-
-            // Inspect the response headers (available via the stream metadata).
             $meta = stream_get_meta_data($in);
             $contentType = '';
             $status = 200;
@@ -157,20 +203,16 @@ class DrivePublicDownloader
                     $status = (int) $m[1];
                 }
             }
-
             if ($status >= 400) {
                 return false;
             }
             if (str_contains($contentType, 'text/html')) {
-                return null; // interstitial / error page
+                return null;
             }
-
             $out = @fopen($path, 'wb');
             if ($out === false) {
                 return false;
             }
-
-            // 256KB chunks keep peak memory tiny regardless of file size.
             while (! feof($in)) {
                 $chunk = fread($in, 262144);
                 if ($chunk === false) {
