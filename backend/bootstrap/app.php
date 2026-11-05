@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'project.access' => \App\Http\Middleware\EnsureProjectAccess::class,
         ]);
+
+        // This is an API-only app with no web "login" route. Never try to
+        // redirect unauthenticated requests there — returning null makes the
+        // Authenticate middleware throw a proper 401 JSON instead of a 500
+        // "Route [login] not defined."
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(
