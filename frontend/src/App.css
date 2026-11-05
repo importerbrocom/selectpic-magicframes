@@ -1912,6 +1912,16 @@ a.selectedCard figcaption {
   gap: 14px;
   flex-wrap: wrap;
 }
+.downloadAllBtn {
+  padding: 8px 15px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.downloadAllBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .layoutButtons {
   display: flex;
   gap: 6px;

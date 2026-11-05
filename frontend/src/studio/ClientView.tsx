@@ -38,6 +38,7 @@ export function ClientView({
   const [filter, setFilter] = useState<PhotoFilter>('all');
   const [columns, setColumns] = useState<1 | 2 | 4>(1);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   // Request a sharper image when fewer photos share the row.
   const gridWidth = columns === 1 ? 1600 : columns === 2 ? 1000 : 700;
@@ -55,6 +56,37 @@ export function ClientView({
       showToast((e as Error).message);
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  // Download every photo in the currently active event folder as one ZIP.
+  async function downloadAllInEvent() {
+    if (!album.driveFolderId || downloadingAll) return;
+    const files = gallery.photos.map((p) => ({
+      file_id: p.id,
+      file_name: p.name,
+    }));
+    if (files.length === 0) {
+      showToast('No photos to download in this event yet.');
+      return;
+    }
+    setDownloadingAll(true);
+    const eventLabel = activeFolderName || 'photos';
+    showToast(
+      `Preparing a ZIP of all ${files.length} photo${files.length === 1 ? '' : 's'} in ${eventLabel}…`,
+    );
+    try {
+      await downloadSelectedZip(
+        `${album.name} - ${eventLabel}`,
+        'all',
+        files,
+        album.id,
+      );
+      showToast('Download ready.');
+    } catch (e) {
+      showToast((e as Error).message);
+    } finally {
+      setDownloadingAll(false);
     }
   }
   const [zoomId, setZoomId] = useState<string | null>(null);
@@ -190,6 +222,20 @@ export function ClientView({
         <div className="galleryToolbar">
           <h3>{activeFolderName ? activeFolderName + ' photographs' : 'Photographs'}</h3>
           <div className="toolbarRight">
+            {canDownload && album.driveFolderId && (
+              <button
+                className="btn outline downloadAllBtn"
+                onClick={downloadAllInEvent}
+                disabled={downloadingAll || gallery.loadingPhotos}
+                title={
+                  activeFolderName
+                    ? 'Download all photos in ' + activeFolderName
+                    : 'Download all photos in this event'
+                }
+              >
+                {downloadingAll ? 'Preparing…' : '⭳ Download all photos'}
+              </button>
+            )}
             <div className="layoutButtons" title="Photos per row">
               {([1, 2, 4] as const).map((n) => (
                 <button
