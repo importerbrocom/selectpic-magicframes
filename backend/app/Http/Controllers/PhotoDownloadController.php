@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\DrivePublicDownloader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -81,33 +82,55 @@ class PhotoDownloadController extends Controller
 
         $added = 0;
         $used = [];
+        $parts = []; // temp files to clean up after the zip is built
         try {
             foreach ($data['files'] as $i => $f) {
-                try {
-                    $bytes = $this->downloader->download($f['file_id']);
-                } catch (Throwable) {
-                    $bytes = null;
+                // Stream each download to its own temp file so we never hold a
+                // whole gallery of full-res originals in memory at once.
+                $part = tempnam($dir, 'mfpart');
+                if ($part === false) {
+                    continue;
                 }
-                if ($bytes === null) {
+                $ok = false;
+                try {
+                    $ok = $this->downloader->downloadToFile($f['file_id'], $part);
+                } catch (Throwable) {
+                    $ok = false;
+                }
+                if (! $ok) {
+                    @unlink($part);
                     continue; // skip unreachable files, keep going
                 }
+                $parts[] = $part;
+
                 $base = $f['file_name'] ?? $f['file_id'];
-                $name = $this->withExtension($base, $bytes);
+                $name = $this->withExtensionFromFile($base, $part);
                 $name = $this->uniqueName($name, $i, $used);
-                $zip->addFromString($name, $bytes);
+                $zip->addFile($part, $name);
                 $added++;
-                unset($bytes); // free the buffer before fetching the next file
             }
 
-            $zip->close();
+            // close() is where the archive is actually written to disk.
+            if (! $zip->close()) {
+                throw new \RuntimeException('ZipArchive::close() failed');
+            }
         } catch (Throwable $e) {
+            Log::error('ZIP build failed: ' . $e->getMessage(), ['exception' => $e]);
             @$zip->close();
             @unlink($tmp);
+            foreach ($parts as $p) {
+                @unlink($p);
+            }
 
             return response()->json([
-                'message' => 'The server ran out of resources building this ZIP. '
+                'message' => 'The server could not build this ZIP. '
                     . 'Try downloading fewer photos at a time.',
             ], 500);
+        }
+
+        // Parts are already written into the zip; remove the loose copies.
+        foreach ($parts as $p) {
+            @unlink($p);
         }
 
         if ($added === 0) {
@@ -189,6 +212,19 @@ class PhotoDownloadController extends Controller
         }
         $ext = $this->detectExtension($bytes);
         return $name . '.' . $ext;
+    }
+
+    /**
+     * Same as withExtension() but reads only the first bytes of a file on disk
+     * (so we never load the whole image into memory just to name it).
+     */
+    private function withExtensionFromFile(string $name, string $path): string
+    {
+        if (preg_match('/\.(jpe?g|png|webp|gif|heic|tiff?|bmp)$/i', $name)) {
+            return $name;
+        }
+        $head = (string) @file_get_contents($path, false, null, 0, 12);
+        return $name . '.' . $this->detectExtension($head);
     }
 
     private function detectExtension(string $bytes): string

@@ -94,6 +94,54 @@ class DrivePublicDownloader
         return null;
     }
 
+    /**
+     * Stream a public Drive file straight to a local path (no full in-memory
+     * buffer). Returns true on success. Used by the ZIP builder so large
+     * galleries don't exhaust PHP's memory.
+     */
+    public function downloadToFile(string $fileId, string $path): bool
+    {
+        // First attempt: main endpoint streamed to disk.
+        $ok = $this->streamTo(self::BASE, ['id' => $fileId], $path);
+        if ($ok === true) {
+            return true;
+        }
+        // $ok === null means we got an HTML interstitial; fall back.
+        return $this->streamTo(
+            self::USERCONTENT,
+            ['id' => $fileId, 'export' => 'download', 'confirm' => 't'],
+            $path,
+        ) === true;
+    }
+
+    /**
+     * Stream a GET to a file. Returns true if a non-HTML, non-empty body was
+     * written; null if the response looked like an HTML page (caller should
+     * try the fallback host); false on transport failure.
+     */
+    private function streamTo(string $url, array $query, string $path): ?bool
+    {
+        try {
+            $response = Http::withOptions([
+                'allow_redirects' => true,
+                'sink' => $path,
+            ])->timeout(180)->get($url, $query);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (! $response->successful()) {
+            return false;
+        }
+
+        $ct = strtolower($response->header('Content-Type') ?? '');
+        if (str_contains($ct, 'text/html')) {
+            return null;
+        }
+
+        return (is_file($path) && filesize($path) > 0) ? true : false;
+    }
+
     private function extractConfirmToken(string $html): ?string
     {
         if (preg_match('/confirm=([0-9A-Za-z_-]+)/', $html, $m)) {
