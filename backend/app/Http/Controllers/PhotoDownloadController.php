@@ -121,38 +121,28 @@ class PhotoDownloadController extends Controller
         $typeSlug = $this->slug($data['type'] ?? 'selected');
         $zipName = "{$albumSlug}_{$typeSlug}_photos.zip";
 
-        // Build the archive in a writable app-owned temp dir (the system temp
-        // dir isn't reliably writable on shared hosting).
-        $dir = storage_path('app/tmp');
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0775, true);
+        // Work in a writable app-owned temp dir (the system temp dir isn't
+        // reliably writable on shared hosting).
+        $base = storage_path('app/tmp');
+        if (! is_dir($base)) {
+            @mkdir($base, 0775, true);
         }
-        $tmp = tempnam($dir, 'mfzip');
-        if ($tmp === false) {
+        // Per-request working folder; downloaded files live here, then we zip
+        // the folder and remove it.
+        $work = $base . '/' . uniqid('mfzip_', true);
+        if (! @mkdir($work, 0775, true)) {
             return response()->json([
-                'message' => 'Could not create a temporary file for the download.',
+                'message' => 'Could not create a working folder for the download.',
             ], 500);
         }
-
-        $zip = new ZipArchive();
-        if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
-            @unlink($tmp);
-            return response()->json([
-                'message' => 'Could not open the ZIP archive for writing.',
-            ], 500);
-        }
+        $tmp = $base . '/' . uniqid('mfarc_', true) . '.zip';
 
         $added = 0;
         $used = [];
-        $parts = []; // temp files to clean up after the zip is built
         try {
+            // 1) Stream every file to disk (constant memory — no full buffer).
             foreach ($data['files'] as $i => $f) {
-                // Stream each download to its own temp file so we never hold a
-                // whole gallery of full-res originals in memory at once.
-                $part = tempnam($dir, 'mfpart');
-                if ($part === false) {
-                    continue;
-                }
+                $part = $work . '/' . sprintf('%04d', $i) . '.bin';
                 $ok = false;
                 try {
                     $ok = $this->downloader->downloadToFile($f['file_id'], $part);
@@ -163,50 +153,128 @@ class PhotoDownloadController extends Controller
                     @unlink($part);
                     continue; // skip unreachable files, keep going
                 }
-                $parts[] = $part;
 
-                $base = $f['file_name'] ?? $f['file_id'];
-                $name = $this->withExtensionFromFile($base, $part);
+                $rawName = $f['file_name'] ?? $f['file_id'];
+                $name = $this->withExtensionFromFile($rawName, $part);
                 $name = $this->uniqueName($name, $i, $used);
-                $zip->addFile($part, $name);
-                $added++;
+                // Rename to the final in-zip filename so we can zip by folder.
+                $dest = $work . '/' . $name;
+                if (@rename($part, $dest)) {
+                    $added++;
+                } else {
+                    @unlink($part);
+                }
             }
 
-            // close() is where the archive is actually written to disk.
-            if (! $zip->close()) {
-                throw new \RuntimeException('ZipArchive::close() failed');
+            if ($added === 0) {
+                $this->rrmdir($work);
+                return response()->json([
+                    'message' => 'None of the selected photos could be downloaded. '
+                        . 'Make sure the Drive folder is shared “Anyone with the link”.',
+                ], 422);
+            }
+
+            // 2) Build the zip. Prefer the system `zip` binary (near-zero PHP
+            // memory); fall back to a chunked ZipArchive if it's unavailable.
+            if (! $this->zipWithSystemBinary($work, $tmp)
+                && ! $this->zipWithArchive($work, $tmp)) {
+                throw new \RuntimeException('No working zip method on this host.');
             }
         } catch (Throwable $e) {
             Log::error('ZIP build failed: ' . $e->getMessage(), ['exception' => $e]);
-            @$zip->close();
+            $this->rrmdir($work);
             @unlink($tmp);
-            foreach ($parts as $p) {
-                @unlink($p);
-            }
 
             return response()->json([
                 'message' => 'The server could not build this ZIP. '
-                    . 'Try downloading fewer photos at a time.',
+                    . 'Please try again, or download in smaller batches.',
             ], 500);
         }
 
-        // Parts are already written into the zip; remove the loose copies.
-        foreach ($parts as $p) {
-            @unlink($p);
-        }
-
-        if ($added === 0) {
-            @unlink($tmp);
-            return response()->json([
-                'message' => 'None of the selected photos could be downloaded. '
-                    . 'Make sure the Drive folder is shared “Anyone with the link”.',
-            ], 422);
-        }
+        // Working folder no longer needed; the zip has everything.
+        $this->rrmdir($work);
 
         // Send the file and delete it afterwards.
         return response()
             ->download($tmp, $zipName, ['Content-Type' => 'application/zip'])
             ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Zip a folder with the system `zip` binary. Returns false if `zip` isn't
+     * available or the command fails. Uses almost no PHP memory.
+     */
+    private function zipWithSystemBinary(string $folder, string $zipPath): bool
+    {
+        if (! function_exists('exec')) {
+            return false;
+        }
+        // Is there a `zip` on PATH?
+        @exec('command -v zip 2>/dev/null', $which, $code);
+        if ($code !== 0 || empty($which)) {
+            return false;
+        }
+        $cmd = 'cd ' . escapeshellarg($folder)
+            . ' && zip -q -0 -r ' . escapeshellarg($zipPath) . ' .';
+        @exec($cmd, $out, $status);
+
+        return $status === 0 && is_file($zipPath) && filesize($zipPath) > 0;
+    }
+
+    /**
+     * Fallback: build the zip with ZipArchive, flushing to disk every few
+     * files (close + reopen) so memory doesn't grow with the gallery size.
+     */
+    private function zipWithArchive(string $folder, string $zipPath): bool
+    {
+        $files = array_values(array_filter(
+            scandir($folder) ?: [],
+            fn ($n) => $n !== '.' && $n !== '..',
+        ));
+        if (empty($files)) {
+            return false;
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return false;
+        }
+
+        $sinceFlush = 0;
+        foreach ($files as $name) {
+            $zip->addFile($folder . '/' . $name, $name);
+            // Store (no compression) — photos are already compressed, and it
+            // keeps CPU/memory low.
+            $zip->setCompressionName($name, ZipArchive::CM_STORE);
+            if (++$sinceFlush >= 20) {
+                // Flush what's queued to disk and reopen to release memory.
+                if (! $zip->close()) {
+                    return false;
+                }
+                $sinceFlush = 0;
+                if ($zip->open($zipPath) !== true) {
+                    return false;
+                }
+            }
+        }
+
+        return $zip->close() && is_file($zipPath) && filesize($zipPath) > 0;
+    }
+
+    /** Recursively delete a directory and its contents. */
+    private function rrmdir(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+        foreach (scandir($dir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $path = $dir . '/' . $entry;
+            is_dir($path) ? $this->rrmdir($path) : @unlink($path);
+        }
+        @rmdir($dir);
     }
 
     /**

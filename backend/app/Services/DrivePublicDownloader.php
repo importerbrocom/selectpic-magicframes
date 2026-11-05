@@ -115,28 +115,78 @@ class DrivePublicDownloader
     }
 
     /**
-     * Stream a GET to a file. Returns true if a non-HTML, non-empty body was
-     * written; null if the response looked like an HTML page (caller should
-     * try the fallback host); false on transport failure.
+     * Stream a GET to a file in small chunks so the full body is NEVER held
+     * in memory (critical on shared hosts with a 512MB–1GB PHP limit).
+     *
+     * Returns true if a non-HTML, non-empty body was written; null if the
+     * response looked like an HTML page (caller should try the fallback host);
+     * false on transport failure.
      */
     private function streamTo(string $url, array $query, string $path): ?bool
     {
+        $full = $url . '?' . http_build_query($query);
+        $in = null;
+        $out = null;
         try {
-            $response = Http::withOptions([
-                'allow_redirects' => true,
-                'sink' => $path,
-            ])->timeout(180)->get($url, $query);
+            // Raw stream context — read the body incrementally, not all at once.
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'follow_location' => 1,
+                    'timeout' => 180,
+                    'header' => "User-Agent: MagicFrames/1.0\r\n",
+                    'ignore_errors' => true,
+                ],
+                'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+            ]);
+
+            $in = @fopen($full, 'rb', false, $context);
+            if ($in === false) {
+                return false;
+            }
+
+            // Inspect the response headers (available via the stream metadata).
+            $meta = stream_get_meta_data($in);
+            $contentType = '';
+            $status = 200;
+            foreach ($meta['wrapper_data'] ?? [] as $h) {
+                if (stripos($h, 'Content-Type:') === 0) {
+                    $contentType = strtolower(trim(substr($h, 13)));
+                }
+                if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) {
+                    $status = (int) $m[1];
+                }
+            }
+
+            if ($status >= 400) {
+                return false;
+            }
+            if (str_contains($contentType, 'text/html')) {
+                return null; // interstitial / error page
+            }
+
+            $out = @fopen($path, 'wb');
+            if ($out === false) {
+                return false;
+            }
+
+            // 256KB chunks keep peak memory tiny regardless of file size.
+            while (! feof($in)) {
+                $chunk = fread($in, 262144);
+                if ($chunk === false) {
+                    break;
+                }
+                fwrite($out, $chunk);
+            }
         } catch (\Throwable) {
             return false;
-        }
-
-        if (! $response->successful()) {
-            return false;
-        }
-
-        $ct = strtolower($response->header('Content-Type') ?? '');
-        if (str_contains($ct, 'text/html')) {
-            return null;
+        } finally {
+            if (is_resource($in)) {
+                fclose($in);
+            }
+            if (is_resource($out)) {
+                fclose($out);
+            }
         }
 
         return (is_file($path) && filesize($path) > 0) ? true : false;
