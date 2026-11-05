@@ -36,11 +36,22 @@ class PhotoDownloadController extends Controller
             'files.*.file_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        DrivePublicDownloader::assertZipSupport();
+        try {
+            DrivePublicDownloader::assertZipSupport();
+        } catch (Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
 
         // Large galleries take a while to fetch + zip; don't let PHP abort.
         @set_time_limit(0);
-        @ini_set('memory_limit', '512M');
+        @ini_set('memory_limit', '1024M');
+        // Guard against a single request trying to zip an unbounded set.
+        if (count($data['files']) > 400) {
+            return response()->json([
+                'message' => 'Too many photos in one download (max 400). '
+                    . 'Please download this event in smaller batches.',
+            ], 413);
+        }
 
         $albumSlug = $this->slug($data['album'] ?? 'album');
         $typeSlug = $this->slug($data['type'] ?? 'selected');
@@ -69,23 +80,34 @@ class PhotoDownloadController extends Controller
 
         $added = 0;
         $used = [];
-        foreach ($data['files'] as $i => $f) {
-            try {
-                $bytes = $this->downloader->download($f['file_id']);
-            } catch (Throwable) {
-                $bytes = null;
+        try {
+            foreach ($data['files'] as $i => $f) {
+                try {
+                    $bytes = $this->downloader->download($f['file_id']);
+                } catch (Throwable) {
+                    $bytes = null;
+                }
+                if ($bytes === null) {
+                    continue; // skip unreachable files, keep going
+                }
+                $base = $f['file_name'] ?? $f['file_id'];
+                $name = $this->withExtension($base, $bytes);
+                $name = $this->uniqueName($name, $i, $used);
+                $zip->addFromString($name, $bytes);
+                $added++;
+                unset($bytes); // free the buffer before fetching the next file
             }
-            if ($bytes === null) {
-                continue; // skip unreachable files, keep going
-            }
-            $base = $f['file_name'] ?? $f['file_id'];
-            $name = $this->withExtension($base, $bytes);
-            $name = $this->uniqueName($name, $i, $used);
-            $zip->addFromString($name, $bytes);
-            $added++;
-        }
 
-        $zip->close();
+            $zip->close();
+        } catch (Throwable $e) {
+            @$zip->close();
+            @unlink($tmp);
+
+            return response()->json([
+                'message' => 'The server ran out of resources building this ZIP. '
+                    . 'Try downloading fewer photos at a time.',
+            ], 500);
+        }
 
         if ($added === 0) {
             @unlink($tmp);

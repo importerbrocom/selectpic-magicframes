@@ -213,12 +213,26 @@ export async function downloadSelectedZip(
   });
 
   if (!res.ok) {
-    let message = `Download failed (${res.status})`;
+    let message = '';
     try {
       const body = await res.json();
-      message = body.message ?? message;
+      message = body.message ?? '';
     } catch {
-      // keep default
+      // Non-JSON error (HTML 500 page, gateway timeout, etc.)
+    }
+    if (!message) {
+      if (res.status === 401 || res.status === 403) {
+        message =
+          'Your album session has expired. Please re-open the album link and enter the password again.';
+      } else if (res.status === 413) {
+        message =
+          'That is too many photos to download at once. Try downloading fewer at a time.';
+      } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+        message =
+          'The server timed out building this download — the event may have too many photos. Try again, or download in smaller batches.';
+      } else {
+        message = `Download failed (HTTP ${res.status}). Please try again.`;
+      }
     }
     throw new Error(message);
   }

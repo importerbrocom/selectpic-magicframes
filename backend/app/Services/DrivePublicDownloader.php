@@ -18,6 +18,8 @@ class DrivePublicDownloader
 {
     private const BASE = 'https://drive.google.com/uc?export=download';
 
+    private const USERCONTENT = 'https://drive.usercontent.google.com/download';
+
     /**
      * Fetch a public Drive file's raw bytes. Returns null if it can't be
      * retrieved (so the caller can skip it and continue the ZIP).
@@ -29,7 +31,7 @@ class DrivePublicDownloader
             ->get(self::BASE, ['id' => $fileId]);
 
         if (! $response->successful()) {
-            return null;
+            return $this->downloadViaUsercontent($fileId);
         }
 
         $body = $response->body();
@@ -40,7 +42,9 @@ class DrivePublicDownloader
         if (str_contains($contentType, 'text/html')) {
             $confirm = $this->extractConfirmToken($body);
             if ($confirm === null) {
-                return null;
+                // Newer Drive responses no longer embed a token on this host;
+                // the usercontent endpoint serves the bytes directly.
+                return $this->downloadViaUsercontent($fileId);
             }
             $response = Http::withOptions(['allow_redirects' => true])
                 ->timeout(120)
@@ -49,17 +53,45 @@ class DrivePublicDownloader
                     'confirm' => $confirm,
                 ]);
             if (! $response->successful()) {
-                return null;
+                return $this->downloadViaUsercontent($fileId);
             }
             $body = $response->body();
             // Still HTML => not actually downloadable (private / not found).
             $ct = strtolower($response->header('Content-Type') ?? '');
             if (str_contains($ct, 'text/html')) {
-                return null;
+                return $this->downloadViaUsercontent($fileId);
             }
         }
 
         return $body !== '' ? $body : null;
+    }
+
+    /**
+     * Fallback host that Google now uses for large public downloads. It
+     * returns the bytes directly (with a confirm param when prompted).
+     */
+    private function downloadViaUsercontent(string $fileId): ?string
+    {
+        foreach (['', 't'] as $confirm) {
+            $params = ['id' => $fileId, 'export' => 'download'];
+            if ($confirm !== '') {
+                $params['confirm'] = $confirm;
+            }
+            $response = Http::withOptions(['allow_redirects' => true])
+                ->timeout(120)
+                ->get(self::USERCONTENT, $params);
+
+            if (! $response->successful()) {
+                continue;
+            }
+            $ct = strtolower($response->header('Content-Type') ?? '');
+            $body = $response->body();
+            if (! str_contains($ct, 'text/html') && $body !== '') {
+                return $body;
+            }
+        }
+
+        return null;
     }
 
     private function extractConfirmToken(string $html): ?string
