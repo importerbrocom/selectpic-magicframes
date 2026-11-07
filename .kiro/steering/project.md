@@ -40,6 +40,17 @@ merges #3, re-check this file still matches reality.
 - Screens: `LoginView` (admin login), `AdminView` (dashboard, albums list +
   detail, create/edit, staff, profile, settings), `ClientGate` (password
   entry), `ClientView` (the photo-selection gallery).
+- **Album cover handling**: `CoverImg.tsx` renders covers and
+  `normalizeCoverUrl()` (in `drive.ts`) converts a pasted Google Drive
+  *file* share link into a loadable image URL (`lh3.googleusercontent.com/
+  d/<id>`); Google Photos album links can't work. An admin-edited cover is
+  never overwritten by the Drive auto-cover — the resolver only fills a cover
+  when none is set (regression fixed in `4a530df`/`432f922`).
+- **Admin per-event downloads**: `AlbumDetail` uses `useAlbumEvents.ts` to
+  list each Drive sub-folder (event) and its file ids, then offers
+  Bride/Groom/Both/All ZIP buttons **per event** (Engagement, Wedding, …) in
+  addition to the all-events row. `ClientView` has a per-event "Download all
+  photos" button for the active event folder.
 - Styling is one big `App.css` (no CSS modules/Tailwind). The **admin** side
   uses a light "modern" theme (`data-theme="modern"` on `#adminView`, mostly
   Inter font, near-black accents). The **client** side uses a dark
@@ -81,18 +92,15 @@ merges #3, re-check this file still matches reality.
   no CHECK constraint — see migration history below). Posting the same
   choice again toggles it off; posting a different choice updates the row in
   place. Unique index is `(project_id, file_id)`.
-- Routes (`routes/api.php`): `apiResource('projects', ...)`,
-  `GET projects/by-slug/{slug}` (public lookup — what the client share link
-  uses), `GET/POST projects/{project}/selections`,
-  `DELETE projects/{project}/selections/{selection}`,
-  `GET drive/images`, `POST photos/zip`.
+- Routes (`routes/api.php`): see the full auth-gated list under "Auth &
+  album access" below. Download/diagnostic routes:
+  `POST photos/zip` and `POST photos/file` (both `auth:sanctum` +
+  `ability:admin,album`), and public `GET photos/diagnostics`.
 - `GoogleDriveService` lists images via the Drive API (service account or
   API key, see `.env`). `DrivePublicDownloader` downloads **public** Drive
-  files server-side (no Google credentials) by hitting the `uc?export=download`
-  endpoint directly — used by `PhotoDownloadController@zip` to build a ZIP of
-  selected photos per category (bride/groom/both/all) and stream it back.
-  ZIP entries get a real image extension detected from the file's magic
-  bytes (Drive filenames often have none).
+  files server-side (no Google credentials) — see "Photo downloads" below
+  for how it streams. ZIP entries get a real image extension detected from
+  the file's magic bytes (Drive filenames often have none).
 - Migration gotcha (read before touching `choice`): an early migration
   declared `choice` as `enum('bride','groom')`. Laravel's `enum()` on
   **SQLite** adds a `CHECK` constraint, which silently rejected `'both'`
@@ -116,11 +124,53 @@ Two independent paths, both already built — know which one you're extending:
    stripped of its size suffix and re-sized with `=w<N>-rj`) rather than the
    deprecated/rate-limited `drive.google.com/uc?export=view`.
 2. **Server-side (download)**: `backend` `DrivePublicDownloader` fetches the
-   same public files' bytes directly (still no Google credentials — it's
-   just an HTTP GET to the public download URL) to build ZIPs. If private
-   (non-public) folders are ever required, this is the piece that would need
-   to switch to a Google service account + `files->get(..., ['alt' =>
-   'media'])`, which `GoogleDriveService` does not currently implement.
+   same public files' bytes directly (still no Google credentials) to build
+   ZIPs — see "Photo downloads" below. If private (non-public) folders are
+   ever required, this is the piece that would need to switch to a Google
+   service account + `files->get(..., ['alt' => 'media'])`, which
+   `GoogleDriveService` does not currently implement.
+
+## Photo downloads (hard-won — read before touching the ZIP code)
+
+This path caused a long string of 500s on the shared host; the fixes below
+are all deployed and verified via a diagnostics endpoint. Don't "simplify"
+them back.
+
+- **Single photo** (client gallery ⭳, and `downloadSinglePhoto` in
+  `drive.ts`): downloads the image **directly**, not as a 1-file ZIP. It
+  tries a browser-side `fetch` of the Drive bytes first, then falls back to
+  `POST photos/file` (server streams one file with the right image MIME),
+  then to opening the Drive URL. No ZIP involved.
+- **Bulk / "download all" / per-category / per-event**: `POST photos/zip`.
+  The response is a **`StreamedResponse`** built by `app/Services/
+  ZipStreamWriter.php` — a hand-written, STORE-method (no compression) ZIP
+  writer that emits a valid archive to `php://output` as each photo is
+  fetched. Reasons it is NOT `ZipArchive`:
+  - `ZipArchive::close()` buffers every file in memory → exhausted even a
+    1 GB limit on a ~247-photo event (the original 500).
+  - Building the whole ZIP before sending the first byte tripped the
+    LiteSpeed request timeout (a 500 PHP can't catch) on large events.
+    Streaming keeps bytes flowing and memory flat.
+- **Downloading each file**: `DrivePublicDownloader::downloadToFile()` uses
+  **cURL writing straight to a file handle** (`CURLOPT_FILE`), with a header
+  callback to detect Google's HTML "can't scan for viruses" interstitial and
+  a fallback to `drive.usercontent.google.com/download`. A plain `fopen()`
+  HTTP-wrapper reader is the secondary fallback. The older
+  `Http::get()`/Guzzle `sink` approach buffered the whole body in memory —
+  do not go back to it.
+- **Diagnostics**: `GET /apibackend/api/photos/diagnostics` (public, no
+  secrets) reports `zip_extension`, `tmp_dir_writable`, `memory_limit`,
+  `max_execution_time`, `curl_extension`, `exec_enabled`, `disk_free_bytes`.
+  `?file_id=<id>` tests a single real fetch; `?zip_test=ID1,ID2` runs the
+  whole fetch+zip end-to-end and reports each step. This is how the host was
+  proven healthy (zip ok, 2G memory, 400s exec, 812 GB free) and the cause
+  isolated to a timeout, then to the `login`-route 500 (next item). Use it
+  first when a download fails rather than guessing.
+- **`admin:create`/zip auth 500 fix**: on this API-only app an
+  unauthenticated `auth:sanctum` request used to 500 with "Route [login] not
+  defined" (the default web redirect). `bootstrap/app.php` now calls
+  `$middleware->redirectGuestsTo(fn () => null)` so guests get a clean 401
+  JSON — which the frontend handles by re-prompting for the album password.
 
 ## Backend/frontend sync (albums + selections)
 
@@ -180,6 +230,13 @@ CI/CD. Know this flow before telling the user to "just deploy":
   pulling, (3) was `dist/` actually copied over the docroot, (4) is the
   browser/CDN caching the old `index.html`. This exact sequence of mistakes
   has happened multiple times on this project.
+- When diagnosing a backend **500**, the fastest path is: (1) read
+  `storage/logs/laravel.log`, and if it's unhelpful, (2) temporarily set
+  `APP_DEBUG=true` in `.env` + `php artisan config:clear`, re-run the
+  request with `curl` to get the real exception + file:line, then set it
+  back to `false`. The `login`-route 500 and the ZIP memory 500 were both
+  only pinned down this way. For the download pipeline specifically, use
+  `GET photos/diagnostics` (see "Photo downloads").
 
 ## Conventions
 
@@ -221,14 +278,16 @@ None are fixed yet; PR #3 lists them as pre-merge caveats.
 - **Logo PNGs** (`logo.png`, `logotrans.png`, `logo2.png`) exist only on the
   deployed server, not in `frontend/public/`, so a clean checkout won't
   have them.
-- **ZIP downloads are slow for big sets** — the backend downloads every
-  original server-side before zipping, buffered in temp storage
-  (`storage/app/tmp`). A streaming zip would fix this if volumes grow.
+- **ZIP downloads for big sets** — now streamed (see "Photo downloads"), so
+  memory and the earlier timeout/500s are resolved. They can still be *slow*
+  for a large event because every original is fetched from Drive before it's
+  added to the stream; that's network time, not a bug. A cap of 400 files
+  per request is enforced.
 - **Old JS bundles accumulate** in the deployed `assets/` folder because
   `cp -r dist/*` never deletes previous hashed files. Harmless but
   messy; clean up by keeping only files referenced by `index.html`.
 
-## Auth & album access (implemented, commit 67563ad — verify deployed)
+## Auth & album access (implemented and deployed)
 
 - **Admin**: `POST auth/login` (throttle 5/min) returns a Sanctum token with
   ability `admin` (14 days), stored in `localStorage` `mf.admin.token`.
@@ -249,15 +308,17 @@ None are fixed yet; PR #3 lists them as pre-merge caveats.
 - **Selections / submit** need admin or the matching album token
   (`project.access` middleware = `EnsureProjectAccess`). `POST
   projects/{id}/submit` locks the album; after that clients get HTTP 423 on
-  selection changes, admins can still edit. `POST photos/zip` accepts
-  `ability:admin,album`.
+  selection changes, admins can still edit. `POST photos/zip` and
+  `POST photos/file` accept `ability:admin,album`.
+- **Guests get 401, not 500**: `bootstrap/app.php` calls
+  `redirectGuestsTo(fn () => null)` — without it, an unauthenticated request
+  to any `auth:sanctum` route 500s with "Route [login] not defined" on this
+  API-only app. The Sanctum middleware aliases (`CheckAbilities`,
+  `CheckForAnyAbility`) are confirmed working on the live server.
 - **Deploy order matters**: backend (`migrate`, `admin:create`) must be live
   before/with the new frontend, otherwise the admin is locked out. Roll back
   with `php artisan migrate:rollback --step=1` (decrypts passwords) plus the
   previous commit.
-- Sanctum middleware class names (`CheckAbilities`, `CheckForAnyAbility`)
-  were written from memory — nothing could be run in the sandbox. Confirm
-  with `php artisan route:list` on the server.
 - **Still waiting on the user**: confirmation of the end-to-end `both`
   pipeline test (see Known gaps above).
 
